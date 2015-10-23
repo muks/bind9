@@ -780,7 +780,7 @@ make_empty_lookup(void) {
 	looknew->ignore = ISC_FALSE;
 	looknew->servfail_stops = ISC_TRUE;
 	looknew->besteffort = ISC_TRUE;
-	looknew->request_checksum = ISC_FALSE;
+	looknew->request_checksum = ISC_TRUE;
 	memset(looknew->checksum_nonce, 0, sizeof(looknew->checksum_nonce));
 	looknew->dnssec = ISC_FALSE;
 	looknew->ednsflags = 0;

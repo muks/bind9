@@ -121,6 +121,7 @@
 
 #define COOKIE_SIZE 24U /* 8 + 4 + 4 + 8 */
 #define ECS_SIZE 20U /* 2 + 1 + 1 + [0..16] */
+#define QUERY_CHECKSUM_SIZE 9U /* 8 + 1 */
 
 /*% nameserver client manager structure */
 struct ns_clientmgr {
@@ -1807,6 +1808,57 @@ compute_cookie(ns_client_t *client, isc_uint32_t when, isc_uint32_t nonce,
 }
 
 static void
+process_checksum(ns_client_t *client, isc_buffer_t *buf, size_t optlen) {
+	isc_uint8_t *nonce;
+	isc_uint8_t algorithm;
+
+	/*
+	 * If we have already seen a CHECKSUM option, skip this CHECKSUM
+	 * option.
+	 */
+	if ((client->attributes & NS_CLIENTATTR_WANTCHECKSUM) != 0) {
+		isc_buffer_forward(buf, (unsigned int) optlen);
+		return;
+	}
+
+	/*
+	 * If the query's CHECKSUM option data is not exactly 8 + 1
+	 * bytes long, skip the option and ignore it.
+	 */
+	if (optlen != QUERY_CHECKSUM_SIZE) {
+		ns_client_log(client, NS_LOGCATEGORY_CLIENT,
+			      NS_LOGMODULE_CLIENT, ISC_LOG_DEBUG(10),
+			      "EDNS CHECKSUM option is not of correct size "
+			      "in query (received %u octets); ignoring option",
+			      (unsigned int) optlen);
+		isc_buffer_forward(buf, (unsigned int) optlen);
+		return;
+	}
+
+	nonce = isc_buffer_current(buf);
+	memmove(client->checksum_nonce, nonce, 8);
+	isc_buffer_forward(buf, 8);
+	algorithm = isc_buffer_getuint8(buf);
+
+	/*
+	 * If the query's ALGORITHM field is not set to 0, skip the
+	 * option and ignore it.
+	 */
+	if (algorithm != 0) {
+		ns_client_log(client, NS_LOGCATEGORY_CLIENT,
+			      NS_LOGMODULE_CLIENT, ISC_LOG_DEBUG(10),
+			      "EDNS CHECKSUM option has incorrect algorithm "
+			      "in query (received %u); ignoring option",
+			      (unsigned int) algorithm);
+		return;
+	}
+
+	client->attributes |= NS_CLIENTATTR_WANTCHECKSUM;
+	isc_stats_increment(ns_g_server->nsstats,
+			    dns_nsstatscounter_checksum_requests);
+}
+
+static void
 process_cookie(ns_client_t *client, isc_buffer_t *buf, size_t optlen) {
 	unsigned char dbuf[COOKIE_SIZE];
 	unsigned char *old;
@@ -2026,6 +2078,9 @@ process_opt(ns_client_t *client, dns_rdataset_t *opt) {
 						    dns_nsstatscounter_nsidopt);
 				client->attributes |= NS_CLIENTATTR_WANTNSID;
 				isc_buffer_forward(&optbuf, optlen);
+				break;
+			case DNS_OPT_CHECKSUM:
+				process_checksum(client, &optbuf, optlen);
 				break;
 			case DNS_OPT_COOKIE:
 				process_cookie(client, &optbuf, optlen);

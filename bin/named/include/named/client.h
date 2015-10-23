@@ -171,6 +171,7 @@ struct ns_client {
 	ISC_QLINK(ns_client_t)	ilink;
 	unsigned char		cookie[8];
 	isc_uint32_t		expire;
+	isc_uint8_t		checksum_nonce[8];
 };
 
 typedef ISC_QUEUE(ns_client_t) client_queue_t;
@@ -179,25 +180,25 @@ typedef ISC_LIST(ns_client_t) client_list_t;
 #define NS_CLIENT_MAGIC			ISC_MAGIC('N','S','C','c')
 #define NS_CLIENT_VALID(c)		ISC_MAGIC_VALID(c, NS_CLIENT_MAGIC)
 
-#define NS_CLIENTATTR_TCP		0x0001
-#define NS_CLIENTATTR_RA		0x0002 /*%< Client gets recursive service */
-#define NS_CLIENTATTR_PKTINFO		0x0004 /*%< pktinfo is valid */
-#define NS_CLIENTATTR_MULTICAST		0x0008 /*%< recv'd from multicast */
-#define NS_CLIENTATTR_WANTDNSSEC	0x0010 /*%< include dnssec records */
-#define NS_CLIENTATTR_WANTNSID          0x0020 /*%< include nameserver ID */
+#define NS_CLIENTATTR_TCP		0x00000001
+#define NS_CLIENTATTR_RA		0x00000002 /*%< Client gets recursive service */
+#define NS_CLIENTATTR_PKTINFO		0x00000004 /*%< pktinfo is valid */
+#define NS_CLIENTATTR_MULTICAST		0x00000008 /*%< recv'd from multicast */
+#define NS_CLIENTATTR_WANTDNSSEC	0x00000010 /*%< include dnssec records */
+#define NS_CLIENTATTR_WANTNSID          0x00000020 /*%< include nameserver ID */
 #ifdef ALLOW_FILTER_AAAA
-#define NS_CLIENTATTR_FILTER_AAAA	0x0040 /*%< suppress AAAAs */
-#define NS_CLIENTATTR_FILTER_AAAA_RC	0x0080 /*%< recursing for A against AAAA */
+#define NS_CLIENTATTR_FILTER_AAAA	0x00000040 /*%< suppress AAAAs */
+#define NS_CLIENTATTR_FILTER_AAAA_RC	0x00000080 /*%< recursing for A against AAAA */
 #endif
-#define NS_CLIENTATTR_WANTAD		0x0100 /*%< want AD in response if possible */
-#define NS_CLIENTATTR_WANTCOOKIE	0x0200 /*%< return a COOKIE */
-#define NS_CLIENTATTR_HAVECOOKIE	0x0400 /*%< has a valid COOKIE */
-#define NS_CLIENTATTR_WANTEXPIRE	0x0800 /*%< return seconds to expire */
-#define NS_CLIENTATTR_HAVEEXPIRE	0x1000 /*%< return seconds to expire */
-#define NS_CLIENTATTR_WANTOPT		0x2000 /*%< add opt to reply */
-#define NS_CLIENTATTR_HAVEECS		0x4000 /*%< sent an ECS option */
-
-#define NS_CLIENTATTR_NOSETFC		0x8000 /*%< don't set servfail cache */
+#define NS_CLIENTATTR_WANTAD		0x00000100 /*%< want AD in response if possible */
+#define NS_CLIENTATTR_WANTCOOKIE	0x00000200 /*%< return a COOKIE */
+#define NS_CLIENTATTR_HAVECOOKIE	0x00000400 /*%< has a valid COOKIE */
+#define NS_CLIENTATTR_WANTEXPIRE	0x00000800 /*%< return seconds to expire */
+#define NS_CLIENTATTR_HAVEEXPIRE	0x00001000 /*%< return seconds to expire */
+#define NS_CLIENTATTR_WANTOPT		0x00002000 /*%< add opt to reply */
+#define NS_CLIENTATTR_HAVEECS		0x00004000 /*%< sent an ECS option */
+#define NS_CLIENTATTR_NOSETFC		0x00008000 /*%< don't set servfail cache */
+#define NS_CLIENTATTR_WANTCHECKSUM	0x00010000 /*%< return a COOKIE */
 
 /*
  * Flag to use with the SERVFAIL cache to indicate

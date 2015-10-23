@@ -1487,6 +1487,7 @@ ns_client_addopt(ns_client_t *client, dns_message_t *message,
 {
 	unsigned char ecs[ECS_SIZE];
 	char nsid[BUFSIZ], *nsidp;
+	isc_uint8_t checksum[QUERY_CHECKSUM_SIZE + 20];
 	unsigned char cookie[COOKIE_SIZE];
 	isc_result_t result;
 	dns_view_t *view;
@@ -1530,6 +1531,29 @@ ns_client_addopt(ns_client_t *client, dns_message_t *message,
 		count++;
 	}
  no_nsid:
+	if (((client->attributes & NS_CLIENTATTR_WANTCHECKSUM) != 0) &&
+	    view->send_message_checksums)
+	{
+		isc_buffer_t buf;
+
+		memset(checksum, 0, sizeof(checksum));
+
+		isc_buffer_init(&buf, checksum, sizeof(checksum));
+		isc_buffer_putmem(&buf, client->checksum_nonce, 8);
+		/* ALGORITHM=1 for SHA-1 */
+		isc_buffer_putuint8(&buf, 1);
+		/*
+		 * Leave the rest of the checksum buffer set to 0. This
+		 * will be used later to compute the checksum.
+		 */
+
+		INSIST(count < DNS_EDNSOPTIONS);
+		ednsopts[count].code = DNS_OPT_CHECKSUM;
+		ednsopts[count].length = sizeof(checksum);
+		ednsopts[count].value = checksum;
+		count++;
+	}
+
 	if ((client->attributes & NS_CLIENTATTR_WANTCOOKIE) != 0) {
 		isc_buffer_t buf;
 		isc_stdtime_t now;
@@ -1837,6 +1861,11 @@ process_checksum(ns_client_t *client, isc_buffer_t *buf, size_t optlen) {
 
 	nonce = isc_buffer_current(buf);
 	memmove(client->checksum_nonce, nonce, 8);
+	/*
+	 * Clear the NONCE in the query message so that any other digest
+	 * computations afterwards are unaffected.
+	 */
+	memset(nonce, 0, 8);
 	isc_buffer_forward(buf, 8);
 	algorithm = isc_buffer_getuint8(buf);
 

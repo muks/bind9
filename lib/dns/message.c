@@ -27,6 +27,7 @@
 #include <isc/buffer.h>
 #include <isc/mem.h>
 #include <isc/print.h>
+#include <isc/sha1.h>
 #include <isc/string.h>		/* Required for HP/UX (and others?) */
 #include <isc/util.h>
 
@@ -408,6 +409,7 @@ msginitprivate(dns_message_t *m) {
 	m->sig_reserved = 0;
 	m->reserved = 0;
 	m->buffer = NULL;
+	m->checksum_digest_offset = 0;
 }
 
 static inline void
@@ -713,6 +715,18 @@ spacefortsig(dns_tsigkey_t *key, int otherlen) {
 			x = 0;
 	}
 	return (26 + r1.length + r2.length + x + otherlen);
+}
+
+static void
+update_digest(dns_message_t *msg, isc_uint16_t offset) {
+	isc_uint8_t *data;
+	isc_sha1_t sha1;
+
+	data = (isc_uint8_t *) isc_buffer_base(msg->buffer);
+
+	isc_sha1_init(&sha1);
+	isc_sha1_update(&sha1, data, isc_buffer_usedlength(msg->buffer));
+	isc_sha1_final(&sha1, data + offset);
 }
 
 isc_result_t
@@ -2138,6 +2152,7 @@ dns_message_renderend(dns_message_t *msg) {
 	isc_region_t r;
 	int result;
 	unsigned int count;
+	isc_uint16_t abs_digest_offset = 0;
 
 	REQUIRE(DNS_MESSAGE_VALID(msg));
 	REQUIRE(msg->buffer != NULL);
@@ -2185,6 +2200,14 @@ dns_message_renderend(dns_message_t *msg) {
 		msg->opt->ttl &= ~DNS_MESSAGE_EDNSRCODE_MASK;
 		msg->opt->ttl |= ((msg->rcode << 20) &
 				  DNS_MESSAGE_EDNSRCODE_MASK);
+
+		if (msg->checksum_digest_offset > 0) {
+			abs_digest_offset = isc_buffer_usedlength(msg->buffer);
+			/* NAME(.) + TYPE + CLASS + TTL + RDLENGTH */
+			abs_digest_offset += 1 + 2 + 2 + 4 + 2;
+			abs_digest_offset += msg->checksum_digest_offset;
+		}
+
 		/*
 		 * Render.
 		 */
@@ -2242,6 +2265,11 @@ dns_message_renderend(dns_message_t *msg) {
 	isc_buffer_init(&tmpbuf, r.base, r.length);
 
 	dns_message_renderheader(msg, &tmpbuf);
+
+	/* Set the digest in replies only */
+	if (((msg->flags & DNS_MESSAGEFLAG_QR) != 0) &&
+	    (abs_digest_offset > 0))
+		update_digest(msg, abs_digest_offset);
 
 	msg->buffer = NULL;  /* forget about this buffer only on success XXX */
 
@@ -3756,6 +3784,8 @@ dns_message_buildopt(dns_message_t *message, dns_rdataset_t **rdatasetp,
 	rdatalist->ttl = (version << 16);
 	rdatalist->ttl |= (flags & 0xffff);
 
+	message->checksum_digest_offset = 0;
+
 	/*
 	 * Set EDNS options if applicable
 	 */
@@ -3776,6 +3806,15 @@ dns_message_buildopt(dns_message_t *message, dns_rdataset_t **rdatasetp,
 		for (i = 0; i < count; i++)  {
 			isc_buffer_putuint16(buf, ednsopts[i].code);
 			isc_buffer_putuint16(buf, ednsopts[i].length);
+
+			/*
+			 * Save the CHECKSUM digest offset to be filled
+			 * in later.
+			 */
+			if (ednsopts[i].code == DNS_OPT_CHECKSUM)
+				message->checksum_digest_offset =
+					isc_buffer_usedlength(buf) + 8 + 1;
+
 			isc_buffer_putmem(buf, ednsopts[i].value,
 					  ednsopts[i].length);
 		}

@@ -266,6 +266,8 @@ struct dns_message {
 
 	dns_rdatasetorderfunc_t		order;
 	const void *			order_arg;
+
+	isc_uint16_t			checksum_digest_offset;
 };
 
 struct dns_ednsopt {

@@ -129,6 +129,7 @@ struct dig_lookup {
 		need_search,
 		done_as_is,
 		besteffort,
+		request_checksum,
 		dnssec,
 		expire,
 		sendcookie,
@@ -192,6 +193,7 @@ isc_boolean_t	sigchase;
 	dns_fixedname_t fdomain;
 	isc_sockaddr_t *ecs_addr;
 	char *cookie;
+	isc_uint8_t checksum_nonce[8];
 	dns_ednsopt_t *ednsopts;
 	unsigned int ednsoptscnt;
 	isc_dscp_t dscp;

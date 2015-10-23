@@ -171,6 +171,7 @@ help(void) {
 "                 +[no]besteffort     (Try to parse even illegal messages)\n"
 "                 +bufsize=###        (Set EDNS0 Max UDP packet size)\n"
 "                 +[no]cdflag         (Set checking disabled flag in query)\n"
+"                 +[no]checksum       (Request checksum in reply)\n"
 "                 +[no]class          (Control display of class in records)\n"
 "                 +[no]cmd            (Control display of command line)\n"
 "                 +[no]comments       (Control display of comment lines)\n"
@@ -861,6 +862,12 @@ plus_option(char *option, isc_boolean_t is_batchfile,
 				goto invalid_option;
 			}
 			break;
+		case 'h': /* checksum */
+			FULLCHECK("checksum");
+			if (state && lookup->edns == -1)
+			        lookup->edns = 0;
+			lookup->request_checksum = state;
+			break;
 		case 'l': /* class */
 			/* keep +cl for backwards compatibility */
 			FULLCHECK2("cl", "class");
@@ -870,9 +877,10 @@ plus_option(char *option, isc_boolean_t is_batchfile,
 			FULLCHECK("cmd");
 			printcmd = state;
 			break;
-		case 'o': /* comments */
+		case 'o':
 			switch (cmd[2]) {
 			case 'm':
+				/* comments */
 				FULLCHECK("comments");
 				lookup->comments = state;
 				if (lookup == default_lookup)

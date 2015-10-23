@@ -183,6 +183,7 @@ int fatalexit = 0;
 char keynametext[MXNAME];
 char keyfile[MXNAME] = "";
 char keysecret[MXNAME] = "";
+unsigned char checksum_buf[8 + 1];
 unsigned char cookie_secret[33];
 unsigned char cookie[8];
 dns_name_t *hmacname = NULL;
@@ -779,6 +780,8 @@ make_empty_lookup(void) {
 	looknew->ignore = ISC_FALSE;
 	looknew->servfail_stops = ISC_TRUE;
 	looknew->besteffort = ISC_TRUE;
+	looknew->request_checksum = ISC_FALSE;
+	memset(looknew->checksum_nonce, 0, sizeof(looknew->checksum_nonce));
 	looknew->dnssec = ISC_FALSE;
 	looknew->ednsflags = 0;
 	looknew->opcode = dns_opcode_query;
@@ -876,6 +879,9 @@ clone_lookup(dig_lookup_t *lookold, isc_boolean_t servers) {
 	looknew->ignore = lookold->ignore;
 	looknew->servfail_stops = lookold->servfail_stops;
 	looknew->besteffort = lookold->besteffort;
+	looknew->request_checksum = lookold->request_checksum;
+	memmove(looknew->checksum_nonce, lookold->checksum_nonce,
+		sizeof(looknew->checksum_nonce));
 	looknew->dnssec = lookold->dnssec;
 	looknew->ednsflags = lookold->ednsflags;
 	looknew->opcode = lookold->opcode;
@@ -1584,7 +1590,7 @@ save_opt(dig_lookup_t *lookup, char *code, char *value) {
 /*%
  * Add EDNS0 option record to a message.  Currently, the only supported
  * options are UDP buffer size, the DO bit, and EDNS options
- * (e.g., NSID, COOKIE, client-subnet)
+ * (e.g., NSID, COOKIE, client-subnet, CHECKSUM)
  */
 static void
 add_opt(dns_message_t *msg, isc_uint16_t udpsize, isc_uint16_t edns,
@@ -2561,6 +2567,26 @@ setup_lookup(dig_lookup_t *lookup) {
 			i++;
 		}
 
+		if (lookup->request_checksum) {
+			isc_buffer_t b;
+
+			isc_buffer_init(&b, checksum_buf,
+					sizeof(checksum_buf));
+
+			INSIST(i < DNS_EDNSOPTIONS);
+			opts[i].code = DNS_OPT_CHECKSUM;
+			result = isc_entropy_getdata
+				(entp, lookup->checksum_nonce,
+				 sizeof(lookup->checksum_nonce), NULL, 0);
+			check_result(result, "isc_entropy_getdata");
+			isc_buffer_putmem(&b, lookup->checksum_nonce,
+					  sizeof(lookup->checksum_nonce));
+			isc_buffer_putuint8(&b, 0); /* ALGORITHM */
+			opts[i].length = 8 + 1;
+			opts[i].value = checksum_buf;
+			i++;
+		}
+
 		if (lookup->sendcookie) {
 			INSIST(i < DNS_EDNSOPTIONS);
 			opts[i].code = DNS_OPT_COOKIE;
@@ -3438,6 +3464,22 @@ check_for_more_data(dig_query_t *query, dns_message_t *msg,
 }
 
 static void
+process_checksum(dig_lookup_t *l, dns_message_t *msg,
+		 isc_buffer_t *optbuf, size_t optlen)
+{
+	UNUSED(l);
+	UNUSED(msg);
+
+	if (optlen < (8 + 1)) {
+		printf(";; Warning: bad CHECKSUM (too short)\n");
+	}
+
+	/* XXXMUKS: verify the checksum */
+
+	isc_buffer_forward(optbuf, (unsigned int)optlen);
+}
+
+static void
 process_cookie(dig_lookup_t *l, dns_message_t *msg,
 	       isc_buffer_t *optbuf, size_t optlen)
 {
@@ -3495,7 +3537,11 @@ process_opt(dig_lookup_t *l, dns_message_t *msg) {
 	isc_result_t result;
 	isc_buffer_t optbuf;
 	isc_uint16_t optcode, optlen;
-	dns_rdataset_t *opt = msg->opt;
+	isc_boolean_t checksum_found;
+	dns_rdataset_t *opt;
+
+	checksum_found = ISC_FALSE;
+	opt = msg->opt;
 
 	result = dns_rdataset_first(opt);
 	if (result == ISC_R_SUCCESS) {
@@ -3510,12 +3556,19 @@ process_opt(dig_lookup_t *l, dns_message_t *msg) {
 			case DNS_OPT_COOKIE:
 				process_cookie(l, msg, &optbuf, optlen);
 				break;
+			case DNS_OPT_CHECKSUM:
+				checksum_found = ISC_TRUE;
+				process_checksum(l, msg, &optbuf, optlen);
+				break;
 			default:
 				isc_buffer_forward(&optbuf, optlen);
 				break;
 			}
 		}
 	}
+
+	if ((l->request_checksum) && (!checksum_found))
+		printf(";; WARNING: expected CHECKSUM option in response\n");
 }
 
 static int
@@ -3934,13 +3987,23 @@ recv_done(isc_task_t *task, isc_event_t *event) {
 		}
 	}
 
-	if (l->cookie != NULL) {
-		if (msg->opt == NULL)
-			printf(";; expected opt record in response\n");
-		else
-			process_opt(l, msg);
-	} else if (l->sendcookie && msg->opt != NULL)
+	if (msg->opt != NULL)
 		process_opt(l, msg);
+	else {
+		isc_boolean_t expect_opt = ISC_FALSE;
+
+		if (l->request_checksum)
+			expect_opt = ISC_TRUE;
+
+		if (l->cookie != NULL)
+			expect_opt = ISC_TRUE;
+
+		/* Add any more conditions that need OPT here. */
+
+		if (expect_opt)
+			printf(";; expected opt record in response\n");
+	}
+
 	if (!l->doing_xfr || l->xfr_q == query) {
 		if (msg->rcode == dns_rcode_nxdomain &&
 		    (l->origin != NULL || l->need_search)) {

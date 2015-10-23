@@ -1218,6 +1218,24 @@ configure_peer(const cfg_obj_t *cpeer, isc_mem_t *mctx, dns_peer_t **peerp) {
 		CHECK(dns_peer_setrequestixfr(peer, cfg_obj_asboolean(obj)));
 
 	obj = NULL;
+	(void)cfg_map_get(cpeer, "ignore-bad-message-checksums", &obj);
+	if (obj != NULL)
+		CHECK(dns_peer_setignorebadmessagechecksums
+		      (peer, cfg_obj_asboolean(obj)));
+
+	obj = NULL;
+	(void)cfg_map_get(cpeer, "request-message-checksums", &obj);
+	if (obj != NULL)
+		CHECK(dns_peer_setrequestmessagechecksums
+		      (peer, cfg_obj_asboolean(obj)));
+
+	obj = NULL;
+	(void)cfg_map_get(cpeer, "send-message-checksums", &obj);
+	if (obj != NULL)
+		CHECK(dns_peer_setsendmessagechecksums
+		      (peer, cfg_obj_asboolean(obj)));
+
+	obj = NULL;
 	(void)cfg_map_get(cpeer, "request-nsid", &obj);
 	if (obj != NULL)
 		CHECK(dns_peer_setrequestnsid(peer, cfg_obj_asboolean(obj)));
@@ -3702,6 +3720,21 @@ configure_view(dns_view_t *view, dns_viewlist_t *viewlist,
 	result = ns_config_get(maps, "provide-ixfr", &obj);
 	INSIST(result == ISC_R_SUCCESS);
 	view->provideixfr = cfg_obj_asboolean(obj);
+
+	obj = NULL;
+	result = ns_config_get(maps, "ignore-bad-message-checksums", &obj);
+	INSIST(result == ISC_R_SUCCESS);
+	view->ignore_bad_message_checksums = cfg_obj_asboolean(obj);
+
+	obj = NULL;
+	result = ns_config_get(maps, "request-message-checksums", &obj);
+	INSIST(result == ISC_R_SUCCESS);
+	view->request_message_checksums = cfg_obj_asboolean(obj);
+
+	obj = NULL;
+	result = ns_config_get(maps, "send-message-checksums", &obj);
+	INSIST(result == ISC_R_SUCCESS);
+	view->send_message_checksums = cfg_obj_asboolean(obj);
 
 	obj = NULL;
 	result = ns_config_get(maps, "request-nsid", &obj);

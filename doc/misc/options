@@ -170,6 +170,7 @@ options {
         host-statistics <boolean>; // not implemented
         host-statistics-max <integer>; // not implemented
         hostname ( <quoted_string> | none );
+        ignore-bad-message-checksums <boolean>;
         inline-signing <boolean>;
         interface-interval <integer>;
         ixfr-from-differences ( master | slave | <boolean> );
@@ -261,6 +262,7 @@ options {
         recursive-clients <integer>;
         request-expire <boolean>;
         request-ixfr <boolean>;
+        request-message-checksums <boolean>;
         request-nsid <boolean>;
         request-sit <boolean>; // obsolete
         require-server-cookie <boolean>;
@@ -279,6 +281,7 @@ options {
             <quoted_string> ] <string> <string>; ... };
         secroots-file <quoted_string>;
         send-cookie <boolean>;
+        send-message-checksums <boolean>;
         serial-queries <integer>; // obsolete
         serial-query-rate <integer>;
         serial-update-method ( increment | unixtime | date );
@@ -334,6 +337,7 @@ server <netprefix> {
         edns <boolean>;
         edns-udp-size <integer>;
         edns-version <integer>;
+        ignore-bad-message-checksums <boolean>;
         keys <server_key>;
         max-udp-size <integer>;
         notify-source ( <ipv4_address> | * ) [ port ( <integer> | * ) ] [
@@ -345,9 +349,11 @@ server <netprefix> {
         query-source-v6 <querysource6>;
         request-expire <boolean>;
         request-ixfr <boolean>;
+        request-message-checksums <boolean>;
         request-nsid <boolean>;
         request-sit <boolean>; // obsolete
         send-cookie <boolean>;
+        send-message-checksums <boolean>;
         support-ixfr <boolean>; // obsolete
         tcp-only <boolean>;
         transfer-format ( many-answers | one-answer );
@@ -456,6 +462,7 @@ view <string> [ <class> ] {
         forward ( first | only );
         forwarders [ port <integer> ] [ dscp <integer> ] { ( <ipv4_address>
             | <ipv6_address> ) [ port <integer> ] [ dscp <integer> ]; ... };
+        ignore-bad-message-checksums <boolean>;
         inline-signing <boolean>;
         ixfr-from-differences ( master | slave | <boolean> );
         key <string> {
@@ -535,6 +542,7 @@ view <string> [ <class> ] {
         recursion <boolean>;
         request-expire <boolean>;
         request-ixfr <boolean>;
+        request-message-checksums <boolean>;
         request-nsid <boolean>;
         request-sit <boolean>; // obsolete
         require-server-cookie <boolean>;
@@ -551,12 +559,14 @@ view <string> [ <class> ] {
         rrset-order { [ class <string> ] [ type <string> ] [ name
             <quoted_string> ] <string> <string>; ... };
         send-cookie <boolean>;
+        send-message-checksums <boolean>;
         serial-update-method ( increment | unixtime | date );
         server <netprefix> {
                 bogus <boolean>;
                 edns <boolean>;
                 edns-udp-size <integer>;
                 edns-version <integer>;
+                ignore-bad-message-checksums <boolean>;
                 keys <server_key>;
                 max-udp-size <integer>;
                 notify-source ( <ipv4_address> | * ) [ port ( <integer> | *
@@ -568,9 +578,11 @@ view <string> [ <class> ] {
                 query-source-v6 <querysource6>;
                 request-expire <boolean>;
                 request-ixfr <boolean>;
+                request-message-checksums <boolean>;
                 request-nsid <boolean>;
                 request-sit <boolean>; // obsolete
                 send-cookie <boolean>;
+                send-message-checksums <boolean>;
                 support-ixfr <boolean>; // obsolete
                 tcp-only <boolean>;
                 transfer-format ( many-answers | one-answer );

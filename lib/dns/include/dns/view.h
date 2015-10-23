@@ -150,6 +150,9 @@ struct dns_view {
 	isc_boolean_t			provideixfr;
 	isc_boolean_t			requestnsid;
 	isc_boolean_t			sendcookie;
+	isc_boolean_t			request_message_checksums;
+	isc_boolean_t			send_message_checksums;
+	isc_boolean_t			ignore_bad_message_checksums;
 	dns_ttl_t			maxcachettl;
 	dns_ttl_t			maxncachettl;
 	isc_uint32_t			nta_lifetime;

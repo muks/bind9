@@ -123,6 +123,9 @@ options {\n\
 	max-udp-size 4096;\n\
 	nocookie-udp-size 4096;\n\
 	send-cookie true;\n\
+	request-message-checksums true;\n\
+	send-message-checksums true;\n\
+	ignore-bad-message-checksums true;\n\
 	request-nsid false;\n\
 	reserved-sockets 512;\n\
 \n\

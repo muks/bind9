@@ -75,6 +75,9 @@ struct dns_peer {
 	isc_boolean_t		support_edns;
 	isc_boolean_t		request_nsid;
 	isc_boolean_t		send_cookie;
+	isc_boolean_t		request_message_checksums;
+	isc_boolean_t		send_message_checksums;
+	isc_boolean_t		ignore_bad_message_checksums;
 	isc_boolean_t		request_expire;
 	isc_boolean_t		force_tcp;
 	dns_name_t	       *key;
@@ -168,6 +171,24 @@ dns_peer_setsendcookie(dns_peer_t *peer, isc_boolean_t newval);
 
 isc_result_t
 dns_peer_getsendcookie(dns_peer_t *peer, isc_boolean_t *retval);
+
+isc_result_t
+dns_peer_setrequestmessagechecksums(dns_peer_t *peer, isc_boolean_t newval);
+
+isc_result_t
+dns_peer_getrequestmessagechecksums(dns_peer_t *peer, isc_boolean_t *retval);
+
+isc_result_t
+dns_peer_setsendmessagechecksums(dns_peer_t *peer, isc_boolean_t newval);
+
+isc_result_t
+dns_peer_getsendmessagechecksums(dns_peer_t *peer, isc_boolean_t *retval);
+
+isc_result_t
+dns_peer_setignorebadmessagechecksums(dns_peer_t *peer, isc_boolean_t newval);
+
+isc_result_t
+dns_peer_getignorebadmessagechecksums(dns_peer_t *peer, isc_boolean_t *retval);
 
 isc_result_t
 dns_peer_setrequestexpire(dns_peer_t *peer, isc_boolean_t newval);

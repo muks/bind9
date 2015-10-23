@@ -353,7 +353,6 @@ server <netprefix> {
         request-nsid <boolean>;
         request-sit <boolean>; // obsolete
         send-cookie <boolean>;
-        send-message-checksums <boolean>;
         support-ixfr <boolean>; // obsolete
         tcp-only <boolean>;
         transfer-format ( many-answers | one-answer );
@@ -582,7 +581,6 @@ view <string> [ <class> ] {
                 request-nsid <boolean>;
                 request-sit <boolean>; // obsolete
                 send-cookie <boolean>;
-                send-message-checksums <boolean>;
                 support-ixfr <boolean>; // obsolete
                 tcp-only <boolean>;
                 transfer-format ( many-answers | one-answer );

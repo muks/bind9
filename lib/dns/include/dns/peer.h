@@ -76,7 +76,6 @@ struct dns_peer {
 	isc_boolean_t		request_nsid;
 	isc_boolean_t		send_cookie;
 	isc_boolean_t		request_message_checksums;
-	isc_boolean_t		send_message_checksums;
 	isc_boolean_t		ignore_bad_message_checksums;
 	isc_boolean_t		request_expire;
 	isc_boolean_t		force_tcp;

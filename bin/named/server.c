@@ -1230,12 +1230,6 @@ configure_peer(const cfg_obj_t *cpeer, isc_mem_t *mctx, dns_peer_t **peerp) {
 		      (peer, cfg_obj_asboolean(obj)));
 
 	obj = NULL;
-	(void)cfg_map_get(cpeer, "send-message-checksums", &obj);
-	if (obj != NULL)
-		CHECK(dns_peer_setsendmessagechecksums
-		      (peer, cfg_obj_asboolean(obj)));
-
-	obj = NULL;
 	(void)cfg_map_get(cpeer, "request-nsid", &obj);
 	if (obj != NULL)
 		CHECK(dns_peer_setrequestnsid(peer, cfg_obj_asboolean(obj)));

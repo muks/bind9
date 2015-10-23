@@ -51,8 +51,7 @@
 #define EDNS_VERSION_BIT	        14
 #define FORCE_TCP_BIT			15
 #define REQUEST_CHECKSUMS_BIT		16
-#define SEND_CHECKSUMS_BIT		17
-#define IGNORE_BAD_CHECKSUMS_BIT	18
+#define IGNORE_BAD_CHECKSUMS_BIT	17
 
 static void
 peerlist_delete(dns_peerlist_t **list);
@@ -504,32 +503,6 @@ dns_peer_getrequestmessagechecksums(dns_peer_t *peer, isc_boolean_t *retval) {
 
 	if (DNS_BIT_CHECK(REQUEST_CHECKSUMS_BIT, &peer->bitflags)) {
 		*retval = peer->request_message_checksums;
-		return (ISC_R_SUCCESS);
-	} else
-		return (ISC_R_NOTFOUND);
-}
-
-isc_result_t
-dns_peer_setsendmessagechecksums(dns_peer_t *peer, isc_boolean_t newval) {
-	isc_boolean_t existed;
-
-	REQUIRE(DNS_PEER_VALID(peer));
-
-	existed = DNS_BIT_CHECK(SEND_CHECKSUMS_BIT, &peer->bitflags);
-
-	peer->send_message_checksums = newval;
-	DNS_BIT_SET(SEND_CHECKSUMS_BIT, &peer->bitflags);
-
-	return (existed ? ISC_R_EXISTS : ISC_R_SUCCESS);
-}
-
-isc_result_t
-dns_peer_getsendmessagechecksums(dns_peer_t *peer, isc_boolean_t *retval) {
-	REQUIRE(DNS_PEER_VALID(peer));
-	REQUIRE(retval != NULL);
-
-	if (DNS_BIT_CHECK(SEND_CHECKSUMS_BIT, &peer->bitflags)) {
-		*retval = peer->send_message_checksums;
 		return (ISC_R_SUCCESS);
 	} else
 		return (ISC_R_NOTFOUND);

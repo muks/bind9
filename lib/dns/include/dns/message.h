@@ -225,6 +225,7 @@ struct dns_message {
 	unsigned int			verify_attempted : 1;
 	unsigned int			free_query : 1;
 	unsigned int			free_saved : 1;
+	unsigned int			checksum_valid : 1;
 	unsigned int			cc_ok : 1;
 	unsigned int			cc_bad : 1;
 

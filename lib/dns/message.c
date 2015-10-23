@@ -446,6 +446,7 @@ msginit(dns_message_t *m) {
 	m->saved.base = NULL;
 	m->saved.length = 0;
 	m->free_saved = 0;
+	m->checksum_valid = 0;
 	m->cc_ok = 0;
 	m->cc_bad = 0;
 	m->querytsig = NULL;
@@ -496,6 +497,8 @@ msgresetopt(dns_message_t *msg)
 		dns_rdataset_disassociate(msg->opt);
 		isc_mempool_put(msg->rdspool, msg->opt);
 		msg->opt = NULL;
+		msg->checksum_digest_offset = 0;
+		msg->checksum_valid = 0;
 		msg->cc_ok = 0;
 		msg->cc_bad = 0;
 	}
@@ -3380,6 +3383,8 @@ dns_message_pseudosectiontotext(dns_message_t *msg,
 
 			if (optcode == DNS_OPT_NSID) {
 				ADD_STRING(target, "; NSID");
+			} else if (optcode == DNS_OPT_CHECKSUM) {
+				ADD_STRING(target, "; CHECKSUM");
 			} else if (optcode == DNS_OPT_COOKIE) {
 				ADD_STRING(target, "; COOKIE");
 			} else if (optcode == DNS_OPT_CLIENT_SUBNET) {
@@ -3412,34 +3417,43 @@ dns_message_pseudosectiontotext(dns_message_t *msg,
 				int i;
 				ADD_STRING(target, ": ");
 
-				optdata = isc_buffer_current(&optbuf);
-				for (i = 0; i < optlen; i++) {
-					const char *sep;
-					switch (optcode) {
-					case DNS_OPT_COOKIE:
-						sep = "";
-						break;
-					default:
-						sep = " ";
-						break;
+				if (optcode != DNS_OPT_CHECKSUM) {
+					optdata = isc_buffer_current(&optbuf);
+					for (i = 0; i < optlen; i++) {
+						const char *sep;
+						switch (optcode) {
+						case DNS_OPT_COOKIE:
+							sep = "";
+							break;
+						default:
+							sep = " ";
+							break;
+						}
+						snprintf(buf, sizeof(buf),
+							 "%02x%s",
+							 optdata[i], sep);
+						ADD_STRING(target, buf);
 					}
-					snprintf(buf, sizeof(buf), "%02x%s",
-						 optdata[i], sep);
-					ADD_STRING(target, buf);
 				}
 
 				isc_buffer_forward(&optbuf, optlen);
 
-				if (optcode == DNS_OPT_COOKIE) {
+				if (optcode == DNS_OPT_CHECKSUM) {
+					if (msg->checksum_valid) {
+						ADD_STRING(target, "(good)");
+					} else {
+						ADD_STRING(target, "(bad)");
+					}
+					ADD_STRING(target, "\n");
+					continue;
+				} else if (optcode == DNS_OPT_COOKIE) {
 					if (msg->cc_ok)
 						ADD_STRING(target, " (good)");
 					if (msg->cc_bad)
 						ADD_STRING(target, " (bad)");
 					ADD_STRING(target, "\n");
 					continue;
-				}
-
-				if (optcode == DNS_OPT_CLIENT_SUBNET) {
+				} else if (optcode == DNS_OPT_CLIENT_SUBNET) {
 					ADD_STRING(target, "\n");
 					continue;
 				}

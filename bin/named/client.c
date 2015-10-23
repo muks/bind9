@@ -1861,11 +1861,6 @@ process_checksum(ns_client_t *client, isc_buffer_t *buf, size_t optlen) {
 
 	nonce = isc_buffer_current(buf);
 	memmove(client->checksum_nonce, nonce, 8);
-	/*
-	 * Clear the NONCE in the query message so that any other digest
-	 * computations afterwards are unaffected.
-	 */
-	memset(nonce, 0, 8);
 	isc_buffer_forward(buf, 8);
 	algorithm = isc_buffer_getuint8(buf);
 

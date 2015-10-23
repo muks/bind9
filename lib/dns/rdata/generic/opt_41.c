@@ -168,6 +168,12 @@ fromwire_opt(ARGS_FROMWIRE) {
 				return (DNS_R_OPTERR);
 			isc_region_consume(&sregion, length);
 			break;
+		case DNS_OPT_CHECKSUM:
+			if ((length != (8 + 1 + 0)) && /* empty digest */
+			    (length != (8 + 1 + 20)))  /* SHA-1 digest */
+				return (DNS_R_OPTERR);
+			isc_region_consume(&sregion, length);
+			break;
 		case DNS_OPT_COOKIE:
 			if (length != 8 && (length < 16 || length > 40))
 				return (DNS_R_OPTERR);

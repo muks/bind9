@@ -24,6 +24,8 @@
 #ifndef RDATA_GENERIC_OPT_41_C
 #define RDATA_GENERIC_OPT_41_C
 
+#include <isc/sha1.h>
+
 #define RRTYPE_OPT_ATTRIBUTES (DNS_RDATATYPEATTR_SINGLETON | \
 			       DNS_RDATATYPEATTR_META | \
 			       DNS_RDATATYPEATTR_NOTQUESTION)
@@ -170,7 +172,7 @@ fromwire_opt(ARGS_FROMWIRE) {
 			break;
 		case DNS_OPT_CHECKSUM:
 			if ((length != (8 + 1 + 0)) && /* empty digest */
-			    (length != (8 + 1 + 20)))  /* SHA-1 digest */
+			    (length != (8 + 1 + ISC_SHA1_DIGESTLENGTH)))
 				return (DNS_R_OPTERR);
 			isc_region_consume(&sregion, length);
 			break;

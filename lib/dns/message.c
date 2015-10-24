@@ -409,7 +409,9 @@ msginitprivate(dns_message_t *m) {
 	m->sig_reserved = 0;
 	m->reserved = 0;
 	m->buffer = NULL;
+	m->checksum_algorithm = CHECKSUM_ALG_NONE;
 	m->checksum_digest_offset = 0;
+	m->checksum_optlen = 0;
 }
 
 static inline void
@@ -497,7 +499,9 @@ msgresetopt(dns_message_t *msg)
 		dns_rdataset_disassociate(msg->opt);
 		isc_mempool_put(msg->rdspool, msg->opt);
 		msg->opt = NULL;
+		msg->checksum_algorithm = CHECKSUM_ALG_NONE;
 		msg->checksum_digest_offset = 0;
+		msg->checksum_optlen = 0;
 		msg->checksum_valid = 0;
 		msg->cc_ok = 0;
 		msg->cc_bad = 0;
@@ -723,13 +727,26 @@ spacefortsig(dns_tsigkey_t *key, int otherlen) {
 static void
 update_digest(dns_message_t *msg, isc_uint16_t offset) {
 	isc_uint8_t *data;
-	isc_sha1_t sha1;
 
 	data = (isc_uint8_t *) isc_buffer_base(msg->buffer);
 
-	isc_sha1_init(&sha1);
-	isc_sha1_update(&sha1, data, isc_buffer_usedlength(msg->buffer));
-	isc_sha1_final(&sha1, data + offset);
+	switch (msg->checksum_algorithm) {
+	case CHECKSUM_ALG_SHA1: {
+		isc_sha1_t sha1;
+
+		INSIST(msg->checksum_optlen == 8 + 1 + ISC_SHA1_DIGESTLENGTH);
+
+		isc_sha1_init(&sha1);
+		isc_sha1_update(&sha1, data, isc_buffer_usedlength(msg->buffer));
+		isc_sha1_final(&sha1, data + offset);
+		break;
+	}
+
+	default:
+		FATAL_ERROR(__FILE__, __LINE__,
+			    "Unexpected message checksum algorithm: %u",
+			    msg->checksum_algorithm);
+	}
 }
 
 isc_result_t
@@ -3658,6 +3675,22 @@ dns_message_gettimeadjust(dns_message_t *msg) {
 	return (msg->timeadjust);
 }
 
+void
+dns_message_setchecksumalg(dns_message_t *msg,
+			   dns_message_checksum_alg_t alg)
+{
+	REQUIRE(DNS_MESSAGE_VALID(msg));
+	REQUIRE(alg != CHECKSUM_ALG_NONE);
+
+	msg->checksum_algorithm = alg;
+}
+
+dns_message_checksum_alg_t
+dns_message_getchecksumalg(dns_message_t *msg) {
+	REQUIRE(DNS_MESSAGE_VALID(msg));
+	return (msg->checksum_algorithm);
+}
+
 isc_result_t
 dns_opcode_totext(dns_opcode_t opcode, isc_buffer_t *target) {
 
@@ -3825,9 +3858,11 @@ dns_message_buildopt(dns_message_t *message, dns_rdataset_t **rdatasetp,
 			 * Save the CHECKSUM digest offset to be filled
 			 * in later.
 			 */
-			if (ednsopts[i].code == DNS_OPT_CHECKSUM)
+			if (ednsopts[i].code == DNS_OPT_CHECKSUM) {
 				message->checksum_digest_offset =
 					isc_buffer_usedlength(buf) + 8 + 1;
+				message->checksum_optlen = ednsopts[i].length;
+			}
 
 			isc_buffer_putmem(buf, ednsopts[i].value,
 					  ednsopts[i].length);

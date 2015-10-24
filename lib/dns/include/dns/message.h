@@ -196,6 +196,11 @@ typedef int dns_messagetextflag_t;
 
 typedef struct dns_msgblock dns_msgblock_t;
 
+typedef enum {
+	CHECKSUM_ALG_NONE = 0,
+	CHECKSUM_ALG_SHA1 = 1
+} dns_message_checksum_alg_t;
+
 struct dns_message {
 	/* public from here down */
 	unsigned int			magic;
@@ -268,7 +273,9 @@ struct dns_message {
 	dns_rdatasetorderfunc_t		order;
 	const void *			order_arg;
 
+	dns_message_checksum_alg_t	checksum_algorithm;
 	isc_uint16_t			checksum_digest_offset;
+	isc_uint16_t			checksum_optlen;
 };
 
 struct dns_ednsopt {
@@ -1371,6 +1378,26 @@ int
 dns_message_gettimeadjust(dns_message_t *msg);
 /*%<
  * Return the current time adjustment.
+ *
+ * Requires:
+ *\li	msg be a valid message.
+ */
+
+void
+dns_message_setchecksumalg(dns_message_t *msg,
+			   dns_message_checksum_alg_t alg);
+/*%<
+ * Set the checksum algorithm for the message.
+ *
+ * Requires:
+ *\li	msg be a valid message.
+ *\li   alg must NOT be CHECKSUM_ALG_NONE.
+ */
+
+dns_message_checksum_alg_t
+dns_message_getchecksumalg(dns_message_t *msg);
+/*%<
+ * Get the checksum algorithm for the message.
  *
  * Requires:
  *\li	msg be a valid message.

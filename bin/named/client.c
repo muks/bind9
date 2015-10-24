@@ -1487,7 +1487,8 @@ ns_client_addopt(ns_client_t *client, dns_message_t *message,
 {
 	unsigned char ecs[ECS_SIZE];
 	char nsid[BUFSIZ], *nsidp;
-	isc_uint8_t checksum[QUERY_CHECKSUM_SIZE + 20];
+	isc_uint8_t *checksum = NULL;
+	isc_uint16_t checksum_optlen = 0;
 	unsigned char cookie[COOKIE_SIZE];
 	isc_result_t result;
 	dns_view_t *view;
@@ -1536,20 +1537,27 @@ ns_client_addopt(ns_client_t *client, dns_message_t *message,
 	{
 		isc_buffer_t buf;
 
-		memset(checksum, 0, sizeof(checksum));
+		dns_message_setchecksumalg(message, CHECKSUM_ALG_SHA1);
 
-		isc_buffer_init(&buf, checksum, sizeof(checksum));
+		checksum_optlen = QUERY_CHECKSUM_SIZE + ISC_SHA1_DIGESTLENGTH;
+		checksum = (isc_uint8_t *) isc_mem_get(message->mctx,
+						       checksum_optlen);
+
+		isc_buffer_init(&buf, checksum, checksum_optlen);
+		/* NONCE */
 		isc_buffer_putmem(&buf, client->checksum_nonce, 8);
-		/* ALGORITHM=1 for SHA-1 */
-		isc_buffer_putuint8(&buf, 1);
+		/* ALGORITHM */
+		isc_buffer_putuint8(&buf, CHECKSUM_ALG_SHA1);
 		/*
-		 * Leave the rest of the checksum buffer set to 0. This
-		 * will be used later to compute the checksum.
+		 * Leave the rest of the checksum buffer (space for
+		 * DIGEST) set to 0. This will be used later to save the
+		 * checksum.
 		 */
+		memset(isc_buffer_used(&buf), 0, ISC_SHA1_DIGESTLENGTH);
 
 		INSIST(count < DNS_EDNSOPTIONS);
 		ednsopts[count].code = DNS_OPT_CHECKSUM;
-		ednsopts[count].length = sizeof(checksum);
+		ednsopts[count].length = checksum_optlen;
 		ednsopts[count].value = checksum;
 		count++;
 	}
@@ -1618,6 +1626,10 @@ ns_client_addopt(ns_client_t *client, dns_message_t *message,
 
 	result = dns_message_buildopt(message, opt, 0, udpsize, flags,
 				      ednsopts, count);
+
+	if (checksum != NULL)
+		isc_mem_put(message->mctx, checksum, checksum_optlen);
+
 	return (result);
 }
 

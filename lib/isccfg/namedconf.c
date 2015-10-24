@@ -899,6 +899,11 @@ static cfg_type_t cfg_type_bracketed_portlist = {
 	&cfg_rep_list, &cfg_type_portrange
 };
 
+static const char *message_checksum_alg_enums[] = { "sha1", NULL };
+static cfg_type_t cfg_type_message_checksum_alg = {
+	"message_checksum_alg", cfg_parse_enum, cfg_print_ustring,
+	cfg_doc_enum, &cfg_rep_string, &message_checksum_alg_enums };
+
 static const char *cookiealg_enums[] = { "aes", "sha1", "sha256", NULL };
 static cfg_type_t cfg_type_cookiealg = {
 	"cookiealg", cfg_parse_enum, cfg_print_ustring, cfg_doc_enum,
@@ -1683,6 +1688,7 @@ view_clauses[] = {
 	{ "max-recursion-depth", &cfg_type_uint32, 0 },
 	{ "max-recursion-queries", &cfg_type_uint32, 0 },
 	{ "max-udp-size", &cfg_type_uint32, 0 },
+	{ "message-checksum-algorithm", &cfg_type_message_checksum_alg, 0 },
 	{ "min-roots", &cfg_type_uint32, CFG_CLAUSEFLAG_NOTIMP },
 	{ "minimal-responses", &cfg_type_boolean, 0 },
 	{ "nta-recheck", &cfg_type_ttlval, 0 },

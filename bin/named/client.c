@@ -1536,10 +1536,22 @@ ns_client_addopt(ns_client_t *client, dns_message_t *message,
 	    view->send_message_checksums)
 	{
 		isc_buffer_t buf;
+		isc_uint16_t digest_length;
 
-		dns_message_setchecksumalg(message, CHECKSUM_ALG_SHA1);
+		switch (view->message_checksum_algorithm) {
+		case CHECKSUM_ALG_SHA1:
+			digest_length = ISC_SHA1_DIGESTLENGTH;
+			break;
+		default:
+			FATAL_ERROR(__FILE__, __LINE__,
+				    "Unexpected message checksum algorithm:"
+				    " %u", view->message_checksum_algorithm);
+		}
 
-		checksum_optlen = QUERY_CHECKSUM_SIZE + ISC_SHA1_DIGESTLENGTH;
+		dns_message_setchecksumalg(message,
+					   view->message_checksum_algorithm);
+
+		checksum_optlen = QUERY_CHECKSUM_SIZE + digest_length;
 		checksum = (isc_uint8_t *) isc_mem_get(message->mctx,
 						       checksum_optlen);
 
@@ -1547,13 +1559,13 @@ ns_client_addopt(ns_client_t *client, dns_message_t *message,
 		/* NONCE */
 		isc_buffer_putmem(&buf, client->checksum_nonce, 8);
 		/* ALGORITHM */
-		isc_buffer_putuint8(&buf, CHECKSUM_ALG_SHA1);
+		isc_buffer_putuint8(&buf, view->message_checksum_algorithm);
 		/*
 		 * Leave the rest of the checksum buffer (space for
 		 * DIGEST) set to 0. This will be used later to save the
 		 * checksum.
 		 */
-		memset(isc_buffer_used(&buf), 0, ISC_SHA1_DIGESTLENGTH);
+		memset(isc_buffer_used(&buf), 0, digest_length);
 
 		INSIST(count < DNS_EDNSOPTIONS);
 		ednsopts[count].code = DNS_OPT_CHECKSUM;

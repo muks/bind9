@@ -729,20 +729,37 @@ spacefortsig(dns_tsigkey_t *key, int otherlen) {
 }
 
 static void
+compute_checksum_digest(void *ptr, size_t size,
+			dns_message_checksum_alg_t algorithm,
+			isc_uint8_t *digest)
+{
+	switch (algorithm) {
+	case CHECKSUM_ALG_SHA1: {
+		isc_sha1_t sha1;
+
+		isc_sha1_init(&sha1);
+		isc_sha1_update(&sha1, ptr, size);
+		isc_sha1_final(&sha1, digest);
+		break;
+	}
+
+	default:
+		FATAL_ERROR(__FILE__, __LINE__,
+			    "Unexpected message checksum algorithm: %u",
+			    algorithm);
+	}
+}
+
+static void
 update_checksum_digest(dns_message_t *msg, isc_uint16_t offset) {
 	isc_uint8_t *data;
+	isc_uint16_t digest_length;
 
 	data = (isc_uint8_t *) isc_buffer_base(msg->buffer);
 
 	switch (msg->checksum_algorithm) {
 	case CHECKSUM_ALG_SHA1: {
-		isc_sha1_t sha1;
-
-		INSIST(msg->checksum_optlen == 8 + 1 + ISC_SHA1_DIGESTLENGTH);
-
-		isc_sha1_init(&sha1);
-		isc_sha1_update(&sha1, data, isc_buffer_usedlength(msg->buffer));
-		isc_sha1_final(&sha1, data + offset);
+		digest_length = ISC_SHA1_DIGESTLENGTH;
 		break;
 	}
 
@@ -751,6 +768,11 @@ update_checksum_digest(dns_message_t *msg, isc_uint16_t offset) {
 			    "Unexpected message checksum algorithm: %u",
 			    msg->checksum_algorithm);
 	}
+
+	INSIST(msg->checksum_optlen == 8 + 1 + digest_length);
+
+	compute_checksum_digest(data, isc_buffer_usedlength(msg->buffer),
+				msg->checksum_algorithm, data + offset);
 }
 
 /*
@@ -799,9 +821,12 @@ process_checksum_digest(dns_message_t *msg, isc_buffer_t *source,
 
 		if (optcode == DNS_OPT_CHECKSUM) {
 			isc_uint8_t *nonce;
-			isc_uint8_t algorithm;
+			isc_uint8_t algorithm_field;
+			dns_message_checksum_alg_t algorithm;
 			isc_uint16_t digest_length;
-			isc_uint8_t digest[ISC_SHA1_DIGESTLENGTH];
+			isc_uint8_t digest_incoming[ISC_SHA1_DIGESTLENGTH];
+			isc_uint8_t digest_expected[ISC_SHA1_DIGESTLENGTH];
+			isc_boolean_t checksum_nonce_matches = ISC_FALSE;
 
 			/*
 			 * If there are multiple CHECKSUM options, we
@@ -824,52 +849,73 @@ process_checksum_digest(dns_message_t *msg, isc_buffer_t *source,
 			isc_buffer_forward(&optbuf, 8);
 			optlen -= 8;
 
-			algorithm = isc_buffer_getuint8(&optbuf);
+			algorithm_field = isc_buffer_getuint8(&optbuf);
 			--optlen;
-			switch (algorithm) {
+			switch (algorithm_field) {
 			case CHECKSUM_ALG_SHA1:
+				algorithm = CHECKSUM_ALG_SHA1;
 				digest_length = ISC_SHA1_DIGESTLENGTH;
 				break;
 			default:
+				algorithm = CHECKSUM_ALG_NONE;
 				digest_length = 0;
 			}
 
 			/* If this is an algorithm we handle... */
 			if (digest_length > 0) {
-				isc_boolean_t checksum_nonce_matches;
-
 				if (optlen != digest_length) {
 					result = DNS_R_OPTERR;
 					goto out;
 				}
 
+				checksum_nonce_matches =
+					ISC_TF(msg->exp_checksum_nonce_set &&
+					       (memcmp(msg->exp_checksum_nonce,
+						       nonce, 8) == 0));
+				if (checksum_nonce_matches) {
+					/*
+					 * Programmer adding support for
+					 * additional ALGORITHMs must
+					 * ensure this.
+					 */
+					INSIST(sizeof(digest_incoming) >=
+					       digest_length);
+
+					memcpy(digest_incoming,
+					       isc_buffer_current(&optbuf),
+					       digest_length);
+				}
+			}
+
+			/*
+			 * Zero any DIGEST, whether we recognize the
+			 * ALGORITHM or not, otherwise further
+			 * processing such as for TSIG can fail.
+			 */
+			if (optlen > 0)
+				memset(isc_buffer_current(&optbuf), 0, optlen);
+
+			/*
+			 * Check if digest is correct and set
+			 * msg->checksum_valid.
+			 */
+			if (checksum_nonce_matches) {
 				/*
 				 * Programmer adding support for
 				 * additional ALGORITHMs must ensure
 				 * this.
 				 */
-				INSIST(sizeof(digest) >= digest_length);
+				INSIST(sizeof(digest_expected) >= digest_length);
 
-				checksum_nonce_matches =
-					ISC_TF(msg->exp_checksum_nonce_set &&
-					       (memcmp(msg->exp_checksum_nonce,
-						       nonce, 8) == 0));
-				/*
-				 * XXXMUKS: Check if digest matches
-				 * here and set msg->checksum_valid.
-				 */
-				if (checksum_nonce_matches) {
-					INSIST(0);
-				}
+				compute_checksum_digest
+					(isc_buffer_base(source),
+					 isc_buffer_usedlength(source),
+					 algorithm, digest_expected);
+				msg->checksum_valid =
+					(memcmp(digest_expected,
+						digest_incoming,
+						digest_length) == 0) ? 1 : 0;
 			}
-
-			/*
-			 * Zero any DIGEST, whether we handle it or not,
-			 * otherwise further processing such as for TSIG
-			 * can fail.
-			 */
-			if (optlen > 0)
-				memset(isc_buffer_current(&optbuf), 0, optlen);
 		}
 
 		isc_buffer_forward(&optbuf, optlen);

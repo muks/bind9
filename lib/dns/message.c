@@ -28,6 +28,7 @@
 #include <isc/mem.h>
 #include <isc/print.h>
 #include <isc/sha1.h>
+#include <isc/sha2.h>
 #include <isc/string.h>		/* Required for HP/UX (and others?) */
 #include <isc/util.h>
 
@@ -743,6 +744,15 @@ compute_checksum_digest(void *ptr, size_t size,
 		break;
 	}
 
+	case CHECKSUM_ALG_SHA256: {
+		isc_sha256_t sha1;
+
+		isc_sha256_init(&sha1);
+		isc_sha256_update(&sha1, ptr, size);
+		isc_sha256_final(digest, &sha1);
+		break;
+	}
+
 	default:
 		FATAL_ERROR(__FILE__, __LINE__,
 			    "Unexpected message checksum algorithm: %u",
@@ -758,10 +768,13 @@ update_checksum_digest(dns_message_t *msg, isc_uint16_t offset) {
 	data = (isc_uint8_t *) isc_buffer_base(msg->buffer);
 
 	switch (msg->checksum_algorithm) {
-	case CHECKSUM_ALG_SHA1: {
+	case CHECKSUM_ALG_SHA1:
 		digest_length = ISC_SHA1_DIGESTLENGTH;
 		break;
-	}
+
+	case CHECKSUM_ALG_SHA256:
+		digest_length = ISC_SHA256_DIGESTLENGTH;
+		break;
 
 	default:
 		FATAL_ERROR(__FILE__, __LINE__,
@@ -824,8 +837,8 @@ process_checksum_digest(dns_message_t *msg, isc_buffer_t *source,
 			isc_uint8_t algorithm_field;
 			dns_message_checksum_alg_t algorithm;
 			isc_uint16_t digest_length;
-			isc_uint8_t digest_incoming[ISC_SHA1_DIGESTLENGTH];
-			isc_uint8_t digest_expected[ISC_SHA1_DIGESTLENGTH];
+			isc_uint8_t digest_incoming[ISC_SHA256_DIGESTLENGTH];
+			isc_uint8_t digest_expected[ISC_SHA256_DIGESTLENGTH];
 			isc_boolean_t checksum_nonce_matches = ISC_FALSE;
 
 			/*
@@ -855,6 +868,10 @@ process_checksum_digest(dns_message_t *msg, isc_buffer_t *source,
 			case CHECKSUM_ALG_SHA1:
 				algorithm = CHECKSUM_ALG_SHA1;
 				digest_length = ISC_SHA1_DIGESTLENGTH;
+				break;
+			case CHECKSUM_ALG_SHA256:
+				algorithm = CHECKSUM_ALG_SHA256;
+				digest_length = ISC_SHA256_DIGESTLENGTH;
 				break;
 			default:
 				algorithm = CHECKSUM_ALG_NONE;

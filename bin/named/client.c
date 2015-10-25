@@ -28,6 +28,8 @@
 #include <isc/random.h>
 #include <isc/safe.h>
 #include <isc/serial.h>
+#include <isc/sha1.h>
+#include <isc/sha2.h>
 #include <isc/stats.h>
 #include <isc/stdio.h>
 #include <isc/string.h>
@@ -1487,7 +1489,7 @@ ns_client_addopt(ns_client_t *client, dns_message_t *message,
 {
 	unsigned char ecs[ECS_SIZE];
 	char nsid[BUFSIZ], *nsidp;
-	isc_uint8_t checksum[8 + 1 + ISC_SHA1_DIGESTLENGTH];
+	isc_uint8_t checksum[8 + 1 + ISC_SHA256_DIGESTLENGTH];
 	unsigned char cookie[COOKIE_SIZE];
 	isc_result_t result;
 	dns_view_t *view;
@@ -1541,6 +1543,9 @@ ns_client_addopt(ns_client_t *client, dns_message_t *message,
 		switch (view->message_checksum_algorithm) {
 		case CHECKSUM_ALG_SHA1:
 			digest_length = ISC_SHA1_DIGESTLENGTH;
+			break;
+		case CHECKSUM_ALG_SHA256:
+			digest_length = ISC_SHA256_DIGESTLENGTH;
 			break;
 		default:
 			FATAL_ERROR(__FILE__, __LINE__,

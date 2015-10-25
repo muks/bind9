@@ -3735,6 +3735,8 @@ configure_view(dns_view_t *view, dns_viewlist_t *viewlist,
 	INSIST(result == ISC_R_SUCCESS);
 	if (strcasecmp(cfg_obj_asstring(obj), "sha1") == 0)
 		view->message_checksum_algorithm = CHECKSUM_ALG_SHA1;
+	else if (strcasecmp(cfg_obj_asstring(obj), "sha256") == 0)
+		view->message_checksum_algorithm = CHECKSUM_ALG_SHA256;
 	else
 		FATAL_ERROR(__FILE__, __LINE__,
 			    "Unexpected message checksum algorithm: %s",

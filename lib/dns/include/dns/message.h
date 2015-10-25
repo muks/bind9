@@ -198,7 +198,8 @@ typedef struct dns_msgblock dns_msgblock_t;
 
 typedef enum {
 	CHECKSUM_ALG_NONE = 0,
-	CHECKSUM_ALG_SHA1 = 1
+	CHECKSUM_ALG_SHA1 = 1,
+	CHECKSUM_ALG_SHA256 = 2
 } dns_message_checksum_alg_t;
 
 struct dns_message {

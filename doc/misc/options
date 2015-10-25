@@ -207,7 +207,7 @@ options {
         max-zone-ttl ( unlimited | <ttlval> );
         memstatistics <boolean>;
         memstatistics-file <quoted_string>;
-        message-checksum-algorithm ( sha1 );
+        message-checksum-algorithm ( sha1 | sha256 );
         min-refresh-time <integer>;
         min-retry-time <integer>;
         min-roots <integer>; // not implemented
@@ -496,7 +496,7 @@ view <string> [ <class> ] {
         max-transfer-time-out <integer>;
         max-udp-size <integer>;
         max-zone-ttl ( unlimited | <ttlval> );
-        message-checksum-algorithm ( sha1 );
+        message-checksum-algorithm ( sha1 | sha256 );
         min-refresh-time <integer>;
         min-retry-time <integer>;
         min-roots <integer>; // not implemented

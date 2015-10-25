@@ -81,7 +81,7 @@ options {\n\
 	match-mapped-addresses no;\n\
 	max-rsa-exponent-size 0; /* no limit */\n\
 	memstatistics-file \"named.memstats\";\n\
-	message-checksum-algorithm sha256;\n\
+	message-checksum-algorithm sha1;\n\
 #	multiple-cnames <obsolete>;\n\
 #	named-xfer <obsolete>;\n\
 	nta-lifetime 3600;\n\

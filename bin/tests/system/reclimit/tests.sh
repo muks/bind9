@@ -29,7 +29,7 @@ echo "1000" > ans2/ans.limit
 $DIG $DIGOPTS @10.53.0.2 reset > /dev/null || ret=1
 $DIG $DIGOPTS @10.53.0.3 indirect1.example.org > dig.out.1.test$n || ret=1
 grep "status: SERVFAIL" dig.out.1.test$n > /dev/null || ret=1
-$DIG $DIGOPTS +short @10.53.0.2 count txt > dig.out.2.test$n || ret=1
+$DIG $DIGOPTS +short +nochecksum +nocookie @10.53.0.2 count txt > dig.out.2.test$n || ret=1
 eval count=`cat dig.out.2.test$n`
 [ $count -eq 26 ] || ret=1
 if [ $ret != 0 ]; then echo "I:failed"; fi
@@ -43,7 +43,7 @@ $RNDC -c ../common/rndc.conf -s 10.53.0.3 -p 9953 flush 2>&1 | sed 's/^/I:ns1 /'
 $DIG $DIGOPTS @10.53.0.2 reset > /dev/null || ret=1
 $DIG $DIGOPTS @10.53.0.3 indirect2.example.org > dig.out.1.test$n || ret=1
 grep "status: NOERROR" dig.out.1.test$n > /dev/null || ret=1
-$DIG $DIGOPTS +short @10.53.0.2 count txt > dig.out.2.test$n || ret=1
+$DIG $DIGOPTS +short +nochecksum +nocookie @10.53.0.2 count txt > dig.out.2.test$n || ret=1
 eval count=`cat dig.out.2.test$n`
 [ $count -eq 49 ] || ret=1
 if [ $ret != 0 ]; then echo "I:failed"; fi
@@ -62,7 +62,7 @@ $RNDC -c ../common/rndc.conf -s 10.53.0.3 -p 9953 flush 2>&1 | sed 's/^/I:ns1 /'
 $DIG $DIGOPTS @10.53.0.2 reset > /dev/null || ret=1
 $DIG $DIGOPTS @10.53.0.3 indirect3.example.org > dig.out.1.test$n || ret=1
 grep "status: SERVFAIL" dig.out.1.test$n > /dev/null || ret=1
-$DIG $DIGOPTS +short @10.53.0.2 count txt > dig.out.2.test$n || ret=1
+$DIG $DIGOPTS +short +nochecksum +nocookie @10.53.0.2 count txt > dig.out.2.test$n || ret=1
 eval count=`cat dig.out.2.test$n`
 [ $count -eq 12 ] || ret=1
 if [ $ret != 0 ]; then echo "I:failed"; fi
@@ -76,7 +76,7 @@ $RNDC -c ../common/rndc.conf -s 10.53.0.3 -p 9953 flush 2>&1 | sed 's/^/I:ns1 /'
 $DIG $DIGOPTS @10.53.0.2 reset > /dev/null || ret=1
 $DIG $DIGOPTS @10.53.0.3 indirect4.example.org > dig.out.1.test$n || ret=1
 grep "status: NOERROR" dig.out.1.test$n > /dev/null || ret=1
-$DIG $DIGOPTS +short @10.53.0.2 count txt > dig.out.2.test$n || ret=1
+$DIG $DIGOPTS +short +nochecksum +nocookie @10.53.0.2 count txt > dig.out.2.test$n || ret=1
 eval count=`cat dig.out.2.test$n`
 [ $count -eq 21 ] || ret=1
 if [ $ret != 0 ]; then echo "I:failed"; fi
@@ -95,7 +95,7 @@ $RNDC -c ../common/rndc.conf -s 10.53.0.3 -p 9953 flush 2>&1 | sed 's/^/I:ns1 /'
 $DIG $DIGOPTS @10.53.0.2 reset > /dev/null || ret=1
 $DIG $DIGOPTS @10.53.0.3 indirect5.example.org > dig.out.1.test$n || ret=1
 grep "status: SERVFAIL" dig.out.1.test$n > /dev/null || ret=1
-$DIG $DIGOPTS +short @10.53.0.2 count txt > dig.out.2.test$n || ret=1
+$DIG $DIGOPTS +short +nochecksum +nocookie @10.53.0.2 count txt > dig.out.2.test$n || ret=1
 eval count=`cat dig.out.2.test$n`
 [ $count -le 50 ] || ret=1
 if [ $ret != 0 ]; then echo "I:failed"; fi
@@ -109,7 +109,7 @@ $RNDC -c ../common/rndc.conf -s 10.53.0.3 -p 9953 flush 2>&1 | sed 's/^/I:ns1 /'
 $DIG $DIGOPTS @10.53.0.2 reset > /dev/null || ret=1
 $DIG $DIGOPTS @10.53.0.3 indirect6.example.org > dig.out.1.test$n || ret=1
 grep "status: NOERROR" dig.out.1.test$n > /dev/null || ret=1
-$DIG $DIGOPTS +short @10.53.0.2 count txt > dig.out.2.test$n || ret=1
+$DIG $DIGOPTS +short +nochecksum +nocookie @10.53.0.2 count txt > dig.out.2.test$n || ret=1
 eval count=`cat dig.out.2.test$n`
 [ $count -le 50 ] || ret=1
 if [ $ret != 0 ]; then echo "I:failed"; fi
@@ -128,7 +128,7 @@ $RNDC -c ../common/rndc.conf -s 10.53.0.3 -p 9953 flush 2>&1 | sed 's/^/I:ns1 /'
 $DIG $DIGOPTS @10.53.0.2 reset > /dev/null || ret=1
 $DIG $DIGOPTS @10.53.0.3 indirect7.example.org > dig.out.1.test$n || ret=1
 grep "status: SERVFAIL" dig.out.1.test$n > /dev/null || ret=1
-$DIG $DIGOPTS +short @10.53.0.2 count txt > dig.out.2.test$n || ret=1
+$DIG $DIGOPTS +short +nochecksum +nocookie @10.53.0.2 count txt > dig.out.2.test$n || ret=1
 eval count=`cat dig.out.2.test$n`
 [ $count -le 40 ] || ret=1
 if [ $ret != 0 ]; then echo "I:failed"; fi
@@ -142,7 +142,7 @@ $RNDC -c ../common/rndc.conf -s 10.53.0.3 -p 9953 flush 2>&1 | sed 's/^/I:ns1 /'
 $DIG $DIGOPTS @10.53.0.2 reset > /dev/null || ret=1
 $DIG $DIGOPTS @10.53.0.3 indirect8.example.org > dig.out.1.test$n || ret=1
 grep "status: NOERROR" dig.out.1.test$n > /dev/null || ret=1
-$DIG $DIGOPTS +short @10.53.0.2 count txt > dig.out.2.test$n || ret=1
+$DIG $DIGOPTS +short +nochecksum +nocookie @10.53.0.2 count txt > dig.out.2.test$n || ret=1
 eval count=`cat dig.out.2.test$n`
 [ $count -le 40 ] || ret=1
 if [ $ret != 0 ]; then echo "I:failed"; fi
@@ -154,10 +154,10 @@ ret=0
 $RNDC -c ../common/rndc.conf -s 10.53.0.3 -p 9953 flush 2>&1 | sed 's/^/I:ns1 /'
 $DIG $DIGOPTS +short @10.53.0.3 ns1.1.example.net > dig.out.1.test$n || ret=1
 sleep 2
-$DIG $DIGOPTS +short @10.53.0.4 count txt > dig.out.2.test$n || ret=1
+$DIG $DIGOPTS +short +nochecksum +nocookie @10.53.0.4 count txt > dig.out.2.test$n || ret=1
 eval count=`cat dig.out.2.test$n`
 [ $count -lt 50 ] || ret=1
-$DIG $DIGOPTS +short @10.53.0.7 count txt > dig.out.3.test$n || ret=1
+$DIG $DIGOPTS +short +nochecksum +nocookie @10.53.0.7 count txt > dig.out.3.test$n || ret=1
 eval count=`cat dig.out.3.test$n`
 [ $count -lt 50 ] || ret=1
 if [ $ret != 0 ]; then echo "I:failed"; fi

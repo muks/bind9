@@ -230,7 +230,9 @@ struct dns_message {
 	unsigned int			verify_attempted : 1;
 	unsigned int			free_query : 1;
 	unsigned int			free_saved : 1;
+	unsigned int			seen_checksum_option : 1;
 	unsigned int			checksum_valid : 1;
+	unsigned int			exp_checksum_nonce_set : 1;
 	unsigned int			cc_ok : 1;
 	unsigned int			cc_bad : 1;
 
@@ -273,9 +275,13 @@ struct dns_message {
 	dns_rdatasetorderfunc_t		order;
 	const void *			order_arg;
 
+	/* In queries */
 	dns_message_checksum_alg_t	checksum_algorithm;
 	isc_uint16_t			checksum_digest_offset;
 	isc_uint16_t			checksum_optlen;
+
+	/* In replies */
+	isc_uint8_t			exp_checksum_nonce[8];
 };
 
 struct dns_ednsopt {
@@ -1401,6 +1407,19 @@ dns_message_getchecksumalg(dns_message_t *msg);
  *
  * Requires:
  *\li	msg be a valid message.
+ */
+
+void
+dns_message_setexpchecksumnonce(dns_message_t *msg,
+				const isc_uint8_t *nonce);
+/*%<
+ * Set the expected checksum nonce to be checked when parsing the
+ * message.
+ *
+ * Requires:
+ *\li	msg be a valid message.
+ *\li	nonce MUST be of size 8 bytes and will be copied
+ *	to an internal buffer.
  */
 
 void

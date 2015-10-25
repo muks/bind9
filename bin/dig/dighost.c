@@ -3464,22 +3464,6 @@ check_for_more_data(dig_query_t *query, dns_message_t *msg,
 }
 
 static void
-process_checksum(dig_lookup_t *l, dns_message_t *msg,
-		 isc_buffer_t *optbuf, size_t optlen)
-{
-	UNUSED(l);
-	UNUSED(msg);
-
-	if (optlen < (8 + 1)) {
-		printf(";; Warning: bad CHECKSUM (too short)\n");
-	}
-
-	/* XXXMUKS: verify the checksum */
-
-	isc_buffer_forward(optbuf, (unsigned int)optlen);
-}
-
-static void
 process_cookie(dig_lookup_t *l, dns_message_t *msg,
 	       isc_buffer_t *optbuf, size_t optlen)
 {
@@ -3558,8 +3542,7 @@ process_opt(dig_lookup_t *l, dns_message_t *msg) {
 				break;
 			case DNS_OPT_CHECKSUM:
 				checksum_found = ISC_TRUE;
-				process_checksum(l, msg, &optbuf, optlen);
-				break;
+				/* fallthrough */
 			default:
 				isc_buffer_forward(&optbuf, optlen);
 				break;
@@ -3772,6 +3755,10 @@ recv_done(isc_task_t *task, isc_event_t *event) {
 		parseflags |= DNS_MESSAGEPARSE_BESTEFFORT;
 		parseflags |= DNS_MESSAGEPARSE_IGNORETRUNCATION;
 	}
+
+	if (l->request_checksum)
+		dns_message_setexpchecksumnonce(msg, l->checksum_nonce);
+
 	result = dns_message_parse(msg, b, parseflags);
 	if (result == DNS_R_RECOVERABLE) {
 		printf(";; Warning: Message parser reports malformed "

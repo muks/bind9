@@ -448,7 +448,9 @@ msginit(dns_message_t *m) {
 	m->saved.base = NULL;
 	m->saved.length = 0;
 	m->free_saved = 0;
+	m->seen_checksum_option = 0;
 	m->checksum_valid = 0;
+	m->exp_checksum_nonce_set = 0;
 	m->cc_ok = 0;
 	m->cc_bad = 0;
 	m->querytsig = NULL;
@@ -502,7 +504,9 @@ msgresetopt(dns_message_t *msg)
 		msg->checksum_algorithm = CHECKSUM_ALG_NONE;
 		msg->checksum_digest_offset = 0;
 		msg->checksum_optlen = 0;
+		msg->seen_checksum_option = 0;
 		msg->checksum_valid = 0;
+		msg->exp_checksum_nonce_set = 0;
 		msg->cc_ok = 0;
 		msg->cc_bad = 0;
 	}
@@ -725,7 +729,7 @@ spacefortsig(dns_tsigkey_t *key, int otherlen) {
 }
 
 static void
-update_digest(dns_message_t *msg, isc_uint16_t offset) {
+update_checksum_digest(dns_message_t *msg, isc_uint16_t offset) {
 	isc_uint8_t *data;
 
 	data = (isc_uint8_t *) isc_buffer_base(msg->buffer);
@@ -747,6 +751,138 @@ update_digest(dns_message_t *msg, isc_uint16_t offset) {
 			    "Unexpected message checksum algorithm: %u",
 			    msg->checksum_algorithm);
 	}
+}
+
+/*
+ * Process message checksum if it exists and set various message
+ * properties from it. This should only be called when QR=1.
+ */
+static isc_result_t
+process_checksum_digest(dns_message_t *msg, isc_buffer_t *source,
+			unsigned int rdatalen)
+{
+	isc_result_t result;
+	unsigned int cur;
+	unsigned int cur2;
+	isc_buffer_t optbuf;
+	isc_uint16_t optcode;
+	isc_uint16_t optlen;
+
+	/* Save offset in source */
+	cur = isc_buffer_usedlength(source);
+
+	/*
+	 * NOTE: source has already been checked to ensure it contains
+	 * rdatalen worth of data.
+	 */
+	isc_buffer_init(&optbuf, isc_buffer_current(source), rdatalen);
+	isc_buffer_add(&optbuf, rdatalen);
+
+	/*
+	 * NOTE: at this stage, the OPT RDATA parser has not checked the
+	 * individual options' OPTION-LENGTH fields against how much
+	 * data is in source, so we must be careful not to read beyond
+	 * source's bounds.
+	 */
+	while (isc_buffer_remaininglength(&optbuf) >= 4) {
+		optcode = isc_buffer_getuint16(&optbuf);
+		optlen = isc_buffer_getuint16(&optbuf);
+
+		/*
+		 * If OPTION-LENGTH is bogus, just return the
+		 * function. The OPT RDATA parser will reject it later.
+		 */
+		if (isc_buffer_remaininglength(&optbuf) < optlen) {
+			result = DNS_R_OPTERR;
+			goto out;
+		}
+
+		if (optcode == DNS_OPT_CHECKSUM) {
+			isc_uint8_t *nonce;
+			isc_uint8_t algorithm;
+			isc_uint16_t digest_length;
+			isc_uint8_t digest[ISC_SHA1_DIGESTLENGTH];
+
+			/*
+			 * If there are multiple CHECKSUM options, we
+			 * reject the message.
+			 */
+			if (msg->seen_checksum_option) {
+				msg->checksum_valid = 0;
+				result = DNS_R_OPTERR;
+				goto out;
+			}
+
+			msg->seen_checksum_option = 1;
+
+			if (optlen < (8 + 1)) {
+				result = DNS_R_OPTERR;
+				goto out;
+			}
+
+			nonce = isc_buffer_current(&optbuf);
+			isc_buffer_forward(&optbuf, 8);
+			optlen -= 8;
+
+			algorithm = isc_buffer_getuint8(&optbuf);
+			--optlen;
+			switch (algorithm) {
+			case CHECKSUM_ALG_SHA1:
+				digest_length = ISC_SHA1_DIGESTLENGTH;
+				break;
+			default:
+				digest_length = 0;
+			}
+
+			/* If this is an algorithm we handle... */
+			if (digest_length > 0) {
+				isc_boolean_t checksum_nonce_matches;
+
+				if (optlen != digest_length) {
+					result = DNS_R_OPTERR;
+					goto out;
+				}
+
+				/*
+				 * Programmer adding support for
+				 * additional ALGORITHMs must ensure
+				 * this.
+				 */
+				INSIST(sizeof(digest) >= digest_length);
+
+				checksum_nonce_matches =
+					ISC_TF(msg->exp_checksum_nonce_set &&
+					       (memcmp(msg->exp_checksum_nonce,
+						       nonce, 8) == 0));
+				/*
+				 * XXXMUKS: Check if digest matches
+				 * here and set msg->checksum_valid.
+				 */
+				if (checksum_nonce_matches) {
+					INSIST(0);
+				}
+			}
+
+			/*
+			 * Zero any DIGEST, whether we handle it or not,
+			 * otherwise further processing such as for TSIG
+			 * can fail.
+			 */
+			if (optlen > 0)
+				memset(isc_buffer_current(&optbuf), 0, optlen);
+		}
+
+		isc_buffer_forward(&optbuf, optlen);
+	}
+
+	result = ISC_R_SUCCESS;
+
+ out:
+	/* source buffer cursor must be untouched */
+	cur2 = isc_buffer_usedlength(source);
+	ENSURE(cur2 == cur);
+
+	return (result);
 }
 
 isc_result_t
@@ -1393,9 +1529,24 @@ getsection(isc_buffer_t *source, dns_message_t *msg, dns_decompress_t *dctx,
 			   sectionid == DNS_SECTION_UPDATE) {
 			result = getrdata(source, msg, dctx, msg->rdclass,
 					  rdtype, rdatalen, rdata);
-		} else
+		} else {
+			/*
+			 * In replies, process OPT here for CHECKSUM
+			 * before it's parsed for rdata. The DIGEST
+			 * field needs to be zeroed here, or it'll
+			 * interfere with other operations such as TSIG
+			 * processing.
+			 */
+			if (((msg->flags & DNS_MESSAGEFLAG_QR) != 0) &&
+			    (rdtype == dns_rdatatype_opt)) {
+				result = process_checksum_digest(msg, source,
+								 rdatalen);
+				if (result != ISC_R_SUCCESS)
+					goto cleanup;
+			}
 			result = getrdata(source, msg, dctx, rdclass,
 					  rdtype, rdatalen, rdata);
+		}
 		if (result != ISC_R_SUCCESS)
 			goto cleanup;
 		rdata->rdclass = rdclass;
@@ -2289,7 +2440,7 @@ dns_message_renderend(dns_message_t *msg) {
 	/* Set the digest in replies only */
 	if (((msg->flags & DNS_MESSAGEFLAG_QR) != 0) &&
 	    (abs_digest_offset > 0))
-		update_digest(msg, abs_digest_offset);
+		update_checksum_digest(msg, abs_digest_offset);
 
 	msg->buffer = NULL;  /* forget about this buffer only on success XXX */
 
@@ -3689,6 +3840,16 @@ dns_message_checksum_alg_t
 dns_message_getchecksumalg(dns_message_t *msg) {
 	REQUIRE(DNS_MESSAGE_VALID(msg));
 	return (msg->checksum_algorithm);
+}
+
+void
+dns_message_setexpchecksumnonce(dns_message_t *msg,
+				const isc_uint8_t *nonce)
+{
+	REQUIRE(DNS_MESSAGE_VALID(msg));
+
+	memcpy(msg->exp_checksum_nonce, nonce, 8);
+	msg->exp_checksum_nonce_set = 1;
 }
 
 isc_result_t

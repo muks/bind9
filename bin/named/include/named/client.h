@@ -198,7 +198,8 @@ typedef ISC_LIST(ns_client_t) client_list_t;
 #define NS_CLIENTATTR_WANTOPT		0x00002000 /*%< add opt to reply */
 #define NS_CLIENTATTR_HAVEECS		0x00004000 /*%< sent an ECS option */
 #define NS_CLIENTATTR_NOSETFC		0x00008000 /*%< don't set servfail cache */
-#define NS_CLIENTATTR_WANTCHECKSUM	0x00010000 /*%< return a COOKIE */
+#define NS_CLIENTATTR_SAWCHECKSUM	0x00010000 /*%< saw a CHECKSUM option already */
+#define NS_CLIENTATTR_WANTCHECKSUM	0x00020000 /*%< return a CHECKSUM */
 
 /*
  * Flag to use with the SERVFAIL cache to indicate

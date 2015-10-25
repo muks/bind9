@@ -1855,23 +1855,28 @@ compute_cookie(ns_client_t *client, isc_uint32_t when, isc_uint32_t nonce,
 	}
 }
 
-static void
+static isc_result_t
 process_checksum(ns_client_t *client, isc_buffer_t *buf, size_t optlen) {
 	isc_uint8_t *nonce;
 	isc_uint8_t algorithm;
 
 	/*
-	 * If we have already seen a CHECKSUM option, skip this CHECKSUM
-	 * option.
+	 * If we have already seen a CHECKSUM option, reject the query.
 	 */
-	if ((client->attributes & NS_CLIENTATTR_WANTCHECKSUM) != 0) {
+	if ((client->attributes & NS_CLIENTATTR_SAWCHECKSUM) != 0) {
 		isc_buffer_forward(buf, (unsigned int) optlen);
-		return;
+		return (DNS_R_OPTERR);
 	}
 
-	/*
+	client->attributes |= NS_CLIENTATTR_SAWCHECKSUM;
+	INSIST((client->attributes & NS_CLIENTATTR_WANTCHECKSUM) == 0);
+
+	  /*
 	 * If the query's CHECKSUM option data is not exactly 8 + 1
 	 * bytes long, skip the option and ignore it.
+	 *
+	 * The OPT RDATA parser checks that buf has optlen bytes
+	 * remaining, so we avoid redundant checks here.
 	 */
 	if (optlen != QUERY_CHECKSUM_SIZE) {
 		ns_client_log(client, NS_LOGCATEGORY_CLIENT,
@@ -1880,7 +1885,7 @@ process_checksum(ns_client_t *client, isc_buffer_t *buf, size_t optlen) {
 			      "in query (received %u octets); ignoring option",
 			      (unsigned int) optlen);
 		isc_buffer_forward(buf, (unsigned int) optlen);
-		return;
+		return (ISC_R_SUCCESS);
 	}
 
 	nonce = isc_buffer_current(buf);
@@ -1898,12 +1903,13 @@ process_checksum(ns_client_t *client, isc_buffer_t *buf, size_t optlen) {
 			      "EDNS CHECKSUM option has incorrect algorithm "
 			      "in query (received %u); ignoring option",
 			      (unsigned int) algorithm);
-		return;
+		return (ISC_R_SUCCESS);
 	}
 
 	client->attributes |= NS_CLIENTATTR_WANTCHECKSUM;
 	isc_stats_increment(ns_g_server->nsstats,
 			    dns_nsstatscounter_checksum_requests);
+	return (ISC_R_SUCCESS);
 }
 
 static void
@@ -2128,7 +2134,11 @@ process_opt(ns_client_t *client, dns_rdataset_t *opt) {
 				isc_buffer_forward(&optbuf, optlen);
 				break;
 			case DNS_OPT_CHECKSUM:
-				process_checksum(client, &optbuf, optlen);
+				result = process_checksum(client, &optbuf, optlen);
+				if (result != ISC_R_SUCCESS) {
+					ns_client_error(client, result);
+					goto cleanup;
+				}
 				break;
 			case DNS_OPT_COOKIE:
 				process_cookie(client, &optbuf, optlen);

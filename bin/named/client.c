@@ -1487,8 +1487,7 @@ ns_client_addopt(ns_client_t *client, dns_message_t *message,
 {
 	unsigned char ecs[ECS_SIZE];
 	char nsid[BUFSIZ], *nsidp;
-	isc_uint8_t *checksum = NULL;
-	isc_uint16_t checksum_optlen = 0;
+	isc_uint8_t checksum[8 + 1 + ISC_SHA1_DIGESTLENGTH];
 	unsigned char cookie[COOKIE_SIZE];
 	isc_result_t result;
 	dns_view_t *view;
@@ -1537,6 +1536,7 @@ ns_client_addopt(ns_client_t *client, dns_message_t *message,
 	{
 		isc_buffer_t buf;
 		isc_uint16_t digest_length;
+		isc_uint16_t checksum_optlen;
 
 		switch (view->message_checksum_algorithm) {
 		case CHECKSUM_ALG_SHA1:
@@ -1550,10 +1550,13 @@ ns_client_addopt(ns_client_t *client, dns_message_t *message,
 
 		dns_message_setchecksumalg(message,
 					   view->message_checksum_algorithm);
-
 		checksum_optlen = QUERY_CHECKSUM_SIZE + digest_length;
-		checksum = (isc_uint8_t *) isc_mem_get(message->mctx,
-						       checksum_optlen);
+
+		/*
+		 * Programmer adding support for additional ALGORITHMs
+		 * must ensure this.
+		 */
+		INSIST(sizeof(checksum) >= checksum_optlen);
 
 		isc_buffer_init(&buf, checksum, checksum_optlen);
 		/* NONCE */
@@ -1638,10 +1641,6 @@ ns_client_addopt(ns_client_t *client, dns_message_t *message,
 
 	result = dns_message_buildopt(message, opt, 0, udpsize, flags,
 				      ednsopts, count);
-
-	if (checksum != NULL)
-		isc_mem_put(message->mctx, checksum, checksum_optlen);
-
 	return (result);
 }
 

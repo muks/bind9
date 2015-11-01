@@ -28,7 +28,6 @@
 #include <isc/random.h>
 #include <isc/safe.h>
 #include <isc/serial.h>
-#include <isc/sha1.h>
 #include <isc/sha2.h>
 #include <isc/stats.h>
 #include <isc/stdio.h>
@@ -1541,9 +1540,6 @@ ns_client_addopt(ns_client_t *client, dns_message_t *message,
 		isc_uint16_t checksum_optlen;
 
 		switch (view->message_checksum_algorithm) {
-		case CHECKSUM_ALG_SHA1:
-			digest_length = ISC_SHA1_DIGESTLENGTH;
-			break;
 		case CHECKSUM_ALG_SHA256:
 			digest_length = ISC_SHA256_DIGESTLENGTH;
 			break;

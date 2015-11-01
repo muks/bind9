@@ -27,7 +27,6 @@
 #include <isc/buffer.h>
 #include <isc/mem.h>
 #include <isc/print.h>
-#include <isc/sha1.h>
 #include <isc/sha2.h>
 #include <isc/string.h>		/* Required for HP/UX (and others?) */
 #include <isc/util.h>
@@ -735,15 +734,6 @@ compute_checksum_digest(void *ptr, size_t size,
 			isc_uint8_t *digest)
 {
 	switch (algorithm) {
-	case CHECKSUM_ALG_SHA1: {
-		isc_sha1_t sha1;
-
-		isc_sha1_init(&sha1);
-		isc_sha1_update(&sha1, ptr, size);
-		isc_sha1_final(&sha1, digest);
-		break;
-	}
-
 	case CHECKSUM_ALG_SHA256: {
 		isc_sha256_t sha256;
 
@@ -768,10 +758,6 @@ update_checksum_digest(dns_message_t *msg, isc_uint16_t offset) {
 	data = (isc_uint8_t *) isc_buffer_base(msg->buffer);
 
 	switch (msg->checksum_algorithm) {
-	case CHECKSUM_ALG_SHA1:
-		digest_length = ISC_SHA1_DIGESTLENGTH;
-		break;
-
 	case CHECKSUM_ALG_SHA256:
 		digest_length = ISC_SHA256_DIGESTLENGTH;
 		break;
@@ -865,10 +851,6 @@ process_checksum_digest(dns_message_t *msg, isc_buffer_t *source,
 			algorithm_field = isc_buffer_getuint8(&optbuf);
 			--optlen;
 			switch (algorithm_field) {
-			case CHECKSUM_ALG_SHA1:
-				algorithm = CHECKSUM_ALG_SHA1;
-				digest_length = ISC_SHA1_DIGESTLENGTH;
-				break;
 			case CHECKSUM_ALG_SHA256:
 				algorithm = CHECKSUM_ALG_SHA256;
 				digest_length = ISC_SHA256_DIGESTLENGTH;

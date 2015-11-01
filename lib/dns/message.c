@@ -745,11 +745,11 @@ compute_checksum_digest(void *ptr, size_t size,
 	}
 
 	case CHECKSUM_ALG_SHA256: {
-		isc_sha256_t sha1;
+		isc_sha256_t sha256;
 
-		isc_sha256_init(&sha1);
-		isc_sha256_update(&sha1, ptr, size);
-		isc_sha256_final(digest, &sha1);
+		isc_sha256_init(&sha256);
+		isc_sha256_update(&sha256, ptr, size);
+		isc_sha256_final(digest, &sha256);
 		break;
 	}
 

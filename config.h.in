@@ -230,14 +230,14 @@ int sigwait(const unsigned int *set, int *sig);
 /* Define to 1 if you have the `EVP_sha256' function. */
 #undef HAVE_EVP_SHA256
 
-/* Define to 1 if you have the `EVP_sha3256' function. */
-#undef HAVE_EVP_SHA3256
+/* Define to 1 if you have the `EVP_sha3_256' function. */
+#undef HAVE_EVP_SHA3_256
 
-/* Define to 1 if you have the `EVP_sha3384' function. */
-#undef HAVE_EVP_SHA3384
+/* Define to 1 if you have the `EVP_sha3_384' function. */
+#undef HAVE_EVP_SHA3_384
 
-/* Define to 1 if you have the `EVP_sha3512' function. */
-#undef HAVE_EVP_SHA3512
+/* Define to 1 if you have the `EVP_sha3_512' function. */
+#undef HAVE_EVP_SHA3_512
 
 /* Define to 1 if you have the `EVP_sha384' function. */
 #undef HAVE_EVP_SHA384

@@ -61,9 +61,9 @@
 #define DNS_KEYALG_NSEC3RSASHA1	7
 #define DNS_KEYALG_RSASHA256	8
 #define DNS_KEYALG_RSASHA512	10
-#define DNS_KEYALG_RSASHA3256	249 /* XXXMUKS: update to real */
-#define DNS_KEYALG_RSASHA3384	250 /* XXXMUKS: update to real */
-#define DNS_KEYALG_RSASHA3512	251 /* XXXMUKS: update to real */
+#define DNS_KEYALG_RSASHA3_256	249 /* XXXMUKS: update to real */
+#define DNS_KEYALG_RSASHA3_384	250 /* XXXMUKS: update to real */
+#define DNS_KEYALG_RSASHA3_512	251 /* XXXMUKS: update to real */
 #define DNS_KEYALG_ECCGOST	12
 #define DNS_KEYALG_ECDSA256	13
 #define DNS_KEYALG_ECDSA384	14

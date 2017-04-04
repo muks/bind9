@@ -14,7 +14,7 @@
 #include <config.h>
 
 #ifndef USE_EVP
-#if !defined(HAVE_EVP_SHA256) || !defined(HAVE_EVP_SHA512) || !defined(HAVE_EVP_SHA3256) || !defined(HAVE_EVP_SHA3384) || !defined(HAVE_EVP_SHA3512)
+#if !defined(HAVE_EVP_SHA256) || !defined(HAVE_EVP_SHA512) || !defined(HAVE_EVP_SHA3_256) || !defined(HAVE_EVP_SHA3_384) || !defined(HAVE_EVP_SHA3_512)
 #define USE_EVP 0
 #else
 #define USE_EVP 1
@@ -255,17 +255,17 @@ opensslrsa_createctx(dst_key_t *key, dst_context_t *dctx) {
 		dctx->key->key_alg == DST_ALG_NSEC3RSASHA1 ||
 		dctx->key->key_alg == DST_ALG_RSASHA256 ||
 		dctx->key->key_alg == DST_ALG_RSASHA512 ||
-		dctx->key->key_alg == DST_ALG_RSASHA3256 ||
-		dctx->key->key_alg == DST_ALG_RSASHA3384 ||
-		dctx->key->key_alg == DST_ALG_RSASHA3512);
+		dctx->key->key_alg == DST_ALG_RSASHA3_256 ||
+		dctx->key->key_alg == DST_ALG_RSASHA3_384 ||
+		dctx->key->key_alg == DST_ALG_RSASHA3_512);
 #else
 	REQUIRE(dctx->key->key_alg == DST_ALG_RSASHA1 ||
 		dctx->key->key_alg == DST_ALG_NSEC3RSASHA1 ||
 		dctx->key->key_alg == DST_ALG_RSASHA256 ||
 		dctx->key->key_alg == DST_ALG_RSASHA512 ||
-		dctx->key->key_alg == DST_ALG_RSASHA3256 ||
-		dctx->key->key_alg == DST_ALG_RSASHA3384 ||
-		dctx->key->key_alg == DST_ALG_RSASHA3512);
+		dctx->key->key_alg == DST_ALG_RSASHA3_256 ||
+		dctx->key->key_alg == DST_ALG_RSASHA3_384 ||
+		dctx->key->key_alg == DST_ALG_RSASHA3_512);
 #endif
 
 #if USE_EVP
@@ -355,7 +355,7 @@ opensslrsa_createctx(dst_key_t *key, dst_context_t *dctx) {
 			dctx->ctxdata.sha512ctx = sha512ctx;
 		}
 		break;
-	case DST_ALG_RSASHA3256:
+	case DST_ALG_RSASHA3_256:
 		{
 			isc_sha3_256_t *sha3_256ctx;
 
@@ -367,7 +367,7 @@ opensslrsa_createctx(dst_key_t *key, dst_context_t *dctx) {
 			dctx->ctxdata.sha3_256ctx = sha3_256ctx;
 		}
 		break;
-	case DST_ALG_RSASHA3384:
+	case DST_ALG_RSASHA3_384:
 		{
 			isc_sha3_384_t *sha3_384ctx;
 
@@ -379,7 +379,7 @@ opensslrsa_createctx(dst_key_t *key, dst_context_t *dctx) {
 			dctx->ctxdata.sha3_384ctx = sha3_384ctx;
 		}
 		break;
-	case DST_ALG_RSASHA3512:
+	case DST_ALG_RSASHA3_512:
 		{
 			isc_sha3_512_t *sha3_512ctx;
 
@@ -411,17 +411,17 @@ opensslrsa_destroyctx(dst_context_t *dctx) {
 		dctx->key->key_alg == DST_ALG_NSEC3RSASHA1 ||
 		dctx->key->key_alg == DST_ALG_RSASHA256 ||
 		dctx->key->key_alg == DST_ALG_RSASHA512 ||
-		dctx->key->key_alg == DST_ALG_RSASHA3256 ||
-		dctx->key->key_alg == DST_ALG_RSASHA3384 ||
-		dctx->key->key_alg == DST_ALG_RSASHA3512);
+		dctx->key->key_alg == DST_ALG_RSASHA3_256 ||
+		dctx->key->key_alg == DST_ALG_RSASHA3_384 ||
+		dctx->key->key_alg == DST_ALG_RSASHA3_512);
 #else
 	REQUIRE(dctx->key->key_alg == DST_ALG_RSASHA1 ||
 		dctx->key->key_alg == DST_ALG_NSEC3RSASHA1 ||
 		dctx->key->key_alg == DST_ALG_RSASHA256 ||
 		dctx->key->key_alg == DST_ALG_RSASHA512 ||
-		dctx->key->key_alg == DST_ALG_RSASHA3256 ||
-		dctx->key->key_alg == DST_ALG_RSASHA3384 ||
-		dctx->key->key_alg == DST_ALG_RSASHA3512);
+		dctx->key->key_alg == DST_ALG_RSASHA3_256 ||
+		dctx->key->key_alg == DST_ALG_RSASHA3_384 ||
+		dctx->key->key_alg == DST_ALG_RSASHA3_512);
 #endif
 
 #if USE_EVP
@@ -482,7 +482,7 @@ opensslrsa_destroyctx(dst_context_t *dctx) {
 			}
 		}
 		break;
-	case DST_ALG_RSASHA3256:
+	case DST_ALG_RSASHA3_256:
 		{
 			isc_sha3_256_t *sha3_256ctx = dctx->ctxdata.sha3_256ctx;
 
@@ -494,7 +494,7 @@ opensslrsa_destroyctx(dst_context_t *dctx) {
 			}
 		}
 		break;
-	case DST_ALG_RSASHA3384:
+	case DST_ALG_RSASHA3_384:
 		{
 			isc_sha3_384_t *sha3_384ctx = dctx->ctxdata.sha3_384ctx;
 
@@ -506,7 +506,7 @@ opensslrsa_destroyctx(dst_context_t *dctx) {
 			}
 		}
 		break;
-	case DST_ALG_RSASHA3512:
+	case DST_ALG_RSASHA3_512:
 		{
 			isc_sha3_512_t *sha3_512ctx = dctx->ctxdata.sha3_512ctx;
 
@@ -536,17 +536,17 @@ opensslrsa_adddata(dst_context_t *dctx, const isc_region_t *data) {
 		dctx->key->key_alg == DST_ALG_NSEC3RSASHA1 ||
 		dctx->key->key_alg == DST_ALG_RSASHA256 ||
 		dctx->key->key_alg == DST_ALG_RSASHA512 ||
-		dctx->key->key_alg == DST_ALG_RSASHA3256 ||
-		dctx->key->key_alg == DST_ALG_RSASHA3384 ||
-		dctx->key->key_alg == DST_ALG_RSASHA3512);
+		dctx->key->key_alg == DST_ALG_RSASHA3_256 ||
+		dctx->key->key_alg == DST_ALG_RSASHA3_384 ||
+		dctx->key->key_alg == DST_ALG_RSASHA3_512);
 #else
 	REQUIRE(dctx->key->key_alg == DST_ALG_RSASHA1 ||
 		dctx->key->key_alg == DST_ALG_NSEC3RSASHA1 ||
 		dctx->key->key_alg == DST_ALG_RSASHA256 ||
 		dctx->key->key_alg == DST_ALG_RSASHA512 ||
-		dctx->key->key_alg == DST_ALG_RSASHA3256 ||
-		dctx->key->key_alg == DST_ALG_RSASHA3384 ||
-		dctx->key->key_alg == DST_ALG_RSASHA3512);
+		dctx->key->key_alg == DST_ALG_RSASHA3_256 ||
+		dctx->key->key_alg == DST_ALG_RSASHA3_384 ||
+		dctx->key->key_alg == DST_ALG_RSASHA3_512);
 #endif
 
 #if USE_EVP
@@ -588,21 +588,21 @@ opensslrsa_adddata(dst_context_t *dctx, const isc_region_t *data) {
 			isc_sha512_update(sha512ctx, data->base, data->length);
 		}
 		break;
-	case DST_ALG_RSASHA3256:
+	case DST_ALG_RSASHA3_256:
 		{
 			isc_sha3_256_t *sha3_256ctx = dctx->ctxdata.sha3_256ctx;
 
 			isc_sha3_256_update(sha3_256ctx, data->base, data->length);
 		}
 		break;
-	case DST_ALG_RSASHA3384:
+	case DST_ALG_RSASHA3_384:
 		{
 			isc_sha3_384_t *sha3_384ctx = dctx->ctxdata.sha3_384ctx;
 
 			isc_sha3_384_update(sha3_384ctx, data->base, data->length);
 		}
 		break;
-	case DST_ALG_RSASHA3512:
+	case DST_ALG_RSASHA3_512:
 		{
 			isc_sha3_512_t *sha3_512ctx = dctx->ctxdata.sha3_512ctx;
 
@@ -667,17 +667,17 @@ opensslrsa_sign(dst_context_t *dctx, isc_buffer_t *sig) {
 		dctx->key->key_alg == DST_ALG_NSEC3RSASHA1 ||
 		dctx->key->key_alg == DST_ALG_RSASHA256 ||
 		dctx->key->key_alg == DST_ALG_RSASHA512 ||
-		dctx->key->key_alg == DST_ALG_RSASHA3256 ||
-		dctx->key->key_alg == DST_ALG_RSASHA3384 ||
-		dctx->key->key_alg == DST_ALG_RSASHA3512);
+		dctx->key->key_alg == DST_ALG_RSASHA3_256 ||
+		dctx->key->key_alg == DST_ALG_RSASHA3_384 ||
+		dctx->key->key_alg == DST_ALG_RSASHA3_512);
 #else
 	REQUIRE(dctx->key->key_alg == DST_ALG_RSASHA1 ||
 		dctx->key->key_alg == DST_ALG_NSEC3RSASHA1 ||
 		dctx->key->key_alg == DST_ALG_RSASHA256 ||
 		dctx->key->key_alg == DST_ALG_RSASHA512 ||
-		dctx->key->key_alg == DST_ALG_RSASHA3256 ||
-		dctx->key->key_alg == DST_ALG_RSASHA3384 ||
-		dctx->key->key_alg == DST_ALG_RSASHA3512);
+		dctx->key->key_alg == DST_ALG_RSASHA3_256 ||
+		dctx->key->key_alg == DST_ALG_RSASHA3_384 ||
+		dctx->key->key_alg == DST_ALG_RSASHA3_512);
 #endif
 
 	isc_buffer_availableregion(sig, &r);
@@ -745,7 +745,7 @@ opensslrsa_sign(dst_context_t *dctx, isc_buffer_t *sig) {
 #endif
 		}
 		break;
-	case DST_ALG_RSASHA3256:
+	case DST_ALG_RSASHA3_256:
 		{
 			isc_sha3_256_t *sha3_256ctx = dctx->ctxdata.sha3_256ctx;
 
@@ -755,7 +755,7 @@ opensslrsa_sign(dst_context_t *dctx, isc_buffer_t *sig) {
 			prefixlen = sizeof(sha3_256_prefix);
 		}
 		break;
-	case DST_ALG_RSASHA3384:
+	case DST_ALG_RSASHA3_384:
 		{
 			isc_sha3_384_t *sha3_384ctx = dctx->ctxdata.sha3_384ctx;
 
@@ -765,7 +765,7 @@ opensslrsa_sign(dst_context_t *dctx, isc_buffer_t *sig) {
 			prefixlen = sizeof(sha3_384_prefix);
 		}
 		break;
-	case DST_ALG_RSASHA3512:
+	case DST_ALG_RSASHA3_512:
 		{
 			isc_sha3_512_t *sha3_512ctx = dctx->ctxdata.sha3_512ctx;
 
@@ -793,9 +793,9 @@ opensslrsa_sign(dst_context_t *dctx, isc_buffer_t *sig) {
 
 	case DST_ALG_RSASHA256:
 	case DST_ALG_RSASHA512:
-	case DST_ALG_RSASHA3256:
-	case DST_ALG_RSASHA3384:
-	case DST_ALG_RSASHA3512:
+	case DST_ALG_RSASHA3_256:
+	case DST_ALG_RSASHA3_384:
+	case DST_ALG_RSASHA3_512:
 		INSIST(prefix != NULL);
 		INSIST(prefixlen != 0);
 		INSIST(prefixlen + digestlen <= sizeof(digest));
@@ -816,9 +816,9 @@ opensslrsa_sign(dst_context_t *dctx, isc_buffer_t *sig) {
 	}
 #else
 	switch (dctx->key->key_alg) {
-	case DST_ALG_RSASHA3256:
-	case DST_ALG_RSASHA3384:
-	case DST_ALG_RSASHA3512:
+	case DST_ALG_RSASHA3_256:
+	case DST_ALG_RSASHA3_384:
+	case DST_ALG_RSASHA3_512:
 		INSIST(prefix != NULL);
 		INSIST(prefixlen != 0);
 		INSIST(prefixlen + digestlen <= sizeof(digest));
@@ -878,17 +878,17 @@ opensslrsa_verify2(dst_context_t *dctx, int maxbits, const isc_region_t *sig) {
 		dctx->key->key_alg == DST_ALG_NSEC3RSASHA1 ||
 		dctx->key->key_alg == DST_ALG_RSASHA256 ||
 		dctx->key->key_alg == DST_ALG_RSASHA512 ||
-		dctx->key->key_alg == DST_ALG_RSASHA3256 ||
-		dctx->key->key_alg == DST_ALG_RSASHA3384 ||
-		dctx->key->key_alg == DST_ALG_RSASHA3512);
+		dctx->key->key_alg == DST_ALG_RSASHA3_256 ||
+		dctx->key->key_alg == DST_ALG_RSASHA3_384 ||
+		dctx->key->key_alg == DST_ALG_RSASHA3_512);
 #else
 	REQUIRE(dctx->key->key_alg == DST_ALG_RSASHA1 ||
 		dctx->key->key_alg == DST_ALG_NSEC3RSASHA1 ||
 		dctx->key->key_alg == DST_ALG_RSASHA256 ||
 		dctx->key->key_alg == DST_ALG_RSASHA512 ||
-		dctx->key->key_alg == DST_ALG_RSASHA3256 ||
-		dctx->key->key_alg == DST_ALG_RSASHA3384 ||
-		dctx->key->key_alg == DST_ALG_RSASHA3512);
+		dctx->key->key_alg == DST_ALG_RSASHA3_256 ||
+		dctx->key->key_alg == DST_ALG_RSASHA3_384 ||
+		dctx->key->key_alg == DST_ALG_RSASHA3_512);
 #endif
 
 #if USE_EVP
@@ -967,7 +967,7 @@ opensslrsa_verify2(dst_context_t *dctx, int maxbits, const isc_region_t *sig) {
 #endif
 		}
 		break;
-	case DST_ALG_RSASHA3256:
+	case DST_ALG_RSASHA3_256:
 		{
 			isc_sha3_256_t *sha3_256ctx = dctx->ctxdata.sha3_256ctx;
 
@@ -977,7 +977,7 @@ opensslrsa_verify2(dst_context_t *dctx, int maxbits, const isc_region_t *sig) {
 			prefixlen = sizeof(sha3_256_prefix);
 		}
 		break;
-	case DST_ALG_RSASHA3384:
+	case DST_ALG_RSASHA3_384:
 		{
 			isc_sha3_384_t *sha3_384ctx = dctx->ctxdata.sha3_384ctx;
 
@@ -987,7 +987,7 @@ opensslrsa_verify2(dst_context_t *dctx, int maxbits, const isc_region_t *sig) {
 			prefixlen = sizeof(sha3_384_prefix);
 		}
 		break;
-	case DST_ALG_RSASHA3512:
+	case DST_ALG_RSASHA3_512:
 		{
 			isc_sha3_512_t *sha3_512ctx = dctx->ctxdata.sha3_512ctx;
 
@@ -1018,9 +1018,9 @@ opensslrsa_verify2(dst_context_t *dctx, int maxbits, const isc_region_t *sig) {
 
 	case DST_ALG_RSASHA256:
 	case DST_ALG_RSASHA512:
-	case DST_ALG_RSASHA3256:
-	case DST_ALG_RSASHA3384:
-	case DST_ALG_RSASHA3512:
+	case DST_ALG_RSASHA3_256:
+	case DST_ALG_RSASHA3_384:
+	case DST_ALG_RSASHA3_512:
 		{
 			/*
 			 * 1024 is big enough for all valid RSA bit sizes
@@ -1058,9 +1058,9 @@ opensslrsa_verify2(dst_context_t *dctx, int maxbits, const isc_region_t *sig) {
 	}
 #else
 	switch (dctx->key->key_alg) {
-	case DST_ALG_RSASHA3256:
-	case DST_ALG_RSASHA3384:
-	case DST_ALG_RSASHA3512:
+	case DST_ALG_RSASHA3_256:
+	case DST_ALG_RSASHA3_384:
+	case DST_ALG_RSASHA3_512:
 		{
 			/*
 			 * 1024 is big enough for all valid RSA bit sizes

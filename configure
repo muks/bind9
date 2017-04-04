@@ -16145,7 +16145,7 @@ $as_echo "yes" >&6; }
 $as_echo "no" >&6; }
 	fi
 
-	for ac_func in EVP_sha256 EVP_sha384 EVP_sha512 EVP_sha3256 EVP_sha3384 EVP_sha3512
+	for ac_func in EVP_sha256 EVP_sha384 EVP_sha512 EVP_sha3_256 EVP_sha3_384 EVP_sha3_512
 do :
   as_ac_var=`$as_echo "ac_cv_func_$ac_func" | $as_tr_sh`
 ac_fn_c_check_func "$LINENO" "$ac_func" "$as_ac_var"

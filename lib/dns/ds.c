@@ -18,6 +18,7 @@
 #include <isc/region.h>
 #include <isc/sha1.h>
 #include <isc/sha2.h>
+#include <isc/sha3.h>
 #include <isc/util.h>
 
 #include <dns/ds.h>
@@ -47,6 +48,8 @@ dns_ds_buildrdata(dns_name_t *owner, dns_rdata_t *key,
 	isc_sha1_t sha1;
 	isc_sha256_t sha256;
 	isc_sha384_t sha384;
+	isc_sha3_256_t sha3_256;
+	isc_sha3_384_t sha3_384;
 #if defined(HAVE_OPENSSL_GOST) || defined(HAVE_PKCS11_GOST)
 	isc_gost_t gost;
 #endif
@@ -105,6 +108,26 @@ dns_ds_buildrdata(dns_name_t *owner, dns_rdata_t *key,
 		isc_sha384_final(digest, &sha384);
 		break;
 
+	case DNS_DSDIGEST_SHA3_256:
+		isc_sha3_256_init(&sha3_256);
+		dns_name_toregion(name, &r);
+		isc_sha3_256_update(&sha3_256, r.base, r.length);
+		dns_rdata_toregion(key, &r);
+		INSIST(r.length >= 4);
+		isc_sha3_256_update(&sha3_256, r.base, r.length);
+		isc_sha3_256_final(digest, &sha3_256);
+		break;
+
+	case DNS_DSDIGEST_SHA3_384:
+		isc_sha3_384_init(&sha3_384);
+		dns_name_toregion(name, &r);
+		isc_sha3_384_update(&sha3_384, r.base, r.length);
+		dns_rdata_toregion(key, &r);
+		INSIST(r.length >= 4);
+		isc_sha3_384_update(&sha3_384, r.base, r.length);
+		isc_sha3_384_final(digest, &sha3_384);
+		break;
+
 	case DNS_DSDIGEST_SHA256:
 	default:
 		isc_sha256_init(&sha256);
@@ -136,6 +159,14 @@ dns_ds_buildrdata(dns_name_t *owner, dns_rdata_t *key,
 
 	case DNS_DSDIGEST_SHA384:
 		ds.length = ISC_SHA384_DIGESTLENGTH;
+		break;
+
+	case DNS_DSDIGEST_SHA3_256:
+		ds.length = ISC_SHA3_256_DIGESTLENGTH;
+		break;
+
+	case DNS_DSDIGEST_SHA3_384:
+		ds.length = ISC_SHA3_384_DIGESTLENGTH;
 		break;
 
 	case DNS_DSDIGEST_SHA256:

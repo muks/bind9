@@ -162,6 +162,8 @@
 	{ DNS_DSDIGEST_SHA256, "SHA-256", 0 }, \
 	{ DNS_DSDIGEST_GOST, "GOST", 0 }, \
 	{ DNS_DSDIGEST_SHA384, "SHA-384", 0 }, \
+	{ DNS_DSDIGEST_SHA3_256, "SHA3-256", 0 }, \
+	{ DNS_DSDIGEST_SHA3_384, "SHA3-384", 0 }, \
 	{ 0, NULL, 0}
 
 struct tbl {

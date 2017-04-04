@@ -12,6 +12,7 @@
 #include <isc/mem.h>
 #include <isc/print.h>
 #include <isc/sha2.h>
+#include <isc/sha3.h>
 #include <isc/string.h>
 #include <isc/task.h>
 #include <isc/util.h>
@@ -1831,8 +1832,15 @@ dlv_validatezonekey(dns_validator_t *val) {
 						      dlv.algorithm))
 			continue;
 
-		if (dlv.digest_type == DNS_DSDIGEST_SHA256 &&
-		    dlv.length == ISC_SHA256_DIGESTLENGTH) {
+		if ((dlv.digest_type == DNS_DSDIGEST_SHA256 &&
+		     dlv.length == ISC_SHA256_DIGESTLENGTH) ||
+		    (dlv.digest_type == DNS_DSDIGEST_SHA384 &&
+		     dlv.length == ISC_SHA384_DIGESTLENGTH) ||
+		    (dlv.digest_type == DNS_DSDIGEST_SHA3_256 &&
+		     dlv.length == ISC_SHA3_256_DIGESTLENGTH) ||
+		    (dlv.digest_type == DNS_DSDIGEST_SHA3_384 &&
+		     dlv.length == ISC_SHA3_384_DIGESTLENGTH))
+		{
 			digest_types[DNS_DSDIGEST_SHA1] = 0;
 			break;
 		}
@@ -2183,8 +2191,15 @@ validatezonekey(dns_validator_t *val) {
 						      ds.algorithm))
 			continue;
 
-		if (ds.digest_type == DNS_DSDIGEST_SHA256 &&
-		    ds.length == ISC_SHA256_DIGESTLENGTH) {
+		if ((ds.digest_type == DNS_DSDIGEST_SHA256 &&
+		     ds.length == ISC_SHA256_DIGESTLENGTH) ||
+		    (ds.digest_type == DNS_DSDIGEST_SHA384 &&
+		     ds.length == ISC_SHA384_DIGESTLENGTH) ||
+		    (ds.digest_type == DNS_DSDIGEST_SHA3_256 &&
+		     ds.length == ISC_SHA3_256_DIGESTLENGTH) ||
+		    (ds.digest_type == DNS_DSDIGEST_SHA3_384 &&
+		     ds.length == ISC_SHA3_384_DIGESTLENGTH))
+		  {
 			digest_types[DNS_DSDIGEST_SHA1] = 0;
 			break;
 		}

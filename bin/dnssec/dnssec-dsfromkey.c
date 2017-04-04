@@ -474,6 +474,10 @@ main(int argc, char **argv) {
 		else if (strcasecmp(algname, "SHA384") == 0 ||
 			 strcasecmp(algname, "SHA-384") == 0)
 			dtype = DNS_DSDIGEST_SHA384;
+		else if (strcasecmp(algname, "SHA3-256") == 0)
+			dtype = DNS_DSDIGEST_SHA3_256;
+		else if (strcasecmp(algname, "SHA3-384") == 0)
+			dtype = DNS_DSDIGEST_SHA3_384;
 		else
 			fatal("unknown algorithm %s", algname);
 	}
@@ -542,6 +546,10 @@ main(int argc, char **argv) {
 				     cds, &rdata);
 				emit(DNS_DSDIGEST_SHA256, showall, lookaside,
 				     cds, &rdata);
+				emit(DNS_DSDIGEST_SHA3_256, showall, lookaside,
+				     cds, &rdata);
+				emit(DNS_DSDIGEST_SHA3_384, showall, lookaside,
+				     cds, &rdata);
 			} else
 				emit(dtype, showall, lookaside, cds, &rdata);
 		}
@@ -555,6 +563,10 @@ main(int argc, char **argv) {
 			emit(DNS_DSDIGEST_SHA1, showall, lookaside, cds,
 			     &rdata);
 			emit(DNS_DSDIGEST_SHA256, showall, lookaside, cds,
+			     &rdata);
+			emit(DNS_DSDIGEST_SHA3_256, showall, lookaside, cds,
+			     &rdata);
+			emit(DNS_DSDIGEST_SHA3_384, showall, lookaside, cds,
 			     &rdata);
 		} else
 			emit(dtype, showall, lookaside, cds, &rdata);

@@ -308,11 +308,15 @@ dst_ds_digest_supported(unsigned int digest_type) {
 	return  (ISC_TF(digest_type == DNS_DSDIGEST_SHA1 ||
 			digest_type == DNS_DSDIGEST_SHA256 ||
 			digest_type == DNS_DSDIGEST_GOST ||
-			digest_type == DNS_DSDIGEST_SHA384));
+			digest_type == DNS_DSDIGEST_SHA384 ||
+			digest_type == DNS_DSDIGEST_SHA3_256 ||
+			digest_type == DNS_DSDIGEST_SHA3_384));
 #else
 	return  (ISC_TF(digest_type == DNS_DSDIGEST_SHA1 ||
 			digest_type == DNS_DSDIGEST_SHA256 ||
-			digest_type == DNS_DSDIGEST_SHA384));
+			digest_type == DNS_DSDIGEST_SHA384 ||
+			digest_type == DNS_DSDIGEST_SHA3_256 ||
+			digest_type == DNS_DSDIGEST_SHA3_384));
 #endif
 }
 

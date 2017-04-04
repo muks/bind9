@@ -19,6 +19,8 @@
 #define DNS_DSDIGEST_SHA256 (2)
 #define DNS_DSDIGEST_GOST (3)
 #define DNS_DSDIGEST_SHA384 (4)
+#define DNS_DSDIGEST_SHA3_256 (252) /* XXXMUKS: update to real */
+#define DNS_DSDIGEST_SHA3_384 (253) /* XXXMUKS: update to real */
 
 /*
  * Assuming SHA-384 digest type.

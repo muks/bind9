@@ -81,6 +81,7 @@ usage(void) {
 	fprintf(stderr, "        RSA | RSAMD5 | DSA | RSASHA1 | NSEC3RSASHA1"
 				" | NSEC3DSA |\n");
 	fprintf(stderr, "        RSASHA256 | RSASHA512 | ECCGOST |\n");
+	fprintf(stderr, "        RSASHA3256 | RSASHA3384 | RSASHA3512 |\n");
 	fprintf(stderr, "        ECDSAP256SHA256 | ECDSAP384SHA384 |\n");
 	fprintf(stderr, "        DH | HMAC-MD5 | HMAC-SHA1 | HMAC-SHA224 | "
 				"HMAC-SHA256 | \n");
@@ -94,6 +95,9 @@ usage(void) {
 	fprintf(stderr, "        NSEC3RSASHA1:\t[512..%d]\n", MAX_RSA);
 	fprintf(stderr, "        RSASHA256:\t[512..%d]\n", MAX_RSA);
 	fprintf(stderr, "        RSASHA512:\t[1024..%d]\n", MAX_RSA);
+	fprintf(stderr, "        RSASHA3256:\t[1024..%d]\n", MAX_RSA);
+	fprintf(stderr, "        RSASHA3384:\t[1024..%d]\n", MAX_RSA);
+	fprintf(stderr, "        RSASHA3512:\t[1024..%d]\n", MAX_RSA);
 	fprintf(stderr, "        DH:\t\t[128..4096]\n");
 	fprintf(stderr, "        DSA:\t\t[512..1024] and divisible by 64\n");
 	fprintf(stderr, "        NSEC3DSA:\t[512..1024] and divisible "
@@ -600,7 +604,9 @@ main(int argc, char **argv) {
 
 		if (use_nsec3 &&
 		    alg != DST_ALG_NSEC3DSA && alg != DST_ALG_NSEC3RSASHA1 &&
-		    alg != DST_ALG_RSASHA256 && alg!= DST_ALG_RSASHA512 &&
+		    alg != DST_ALG_RSASHA256 && alg != DST_ALG_RSASHA512 &&
+		    alg != DST_ALG_RSASHA3256 && alg != DST_ALG_RSASHA3384 &&
+		    alg != DST_ALG_RSASHA3512 &&
 		    alg != DST_ALG_ECCGOST &&
 		    alg != DST_ALG_ECDSA256 && alg != DST_ALG_ECDSA384) {
 			fatal("%s is incompatible with NSEC3; "
@@ -751,6 +757,9 @@ main(int argc, char **argv) {
 		if (size != 0 && (size < 512 || size > MAX_RSA))
 			fatal("RSA key size %d out of range", size);
 		break;
+	case DNS_KEYALG_RSASHA3256:
+	case DNS_KEYALG_RSASHA3384:
+	case DNS_KEYALG_RSASHA3512:
 	case DNS_KEYALG_RSASHA512:
 		if (size != 0 && (size < 1024 || size > MAX_RSA))
 			fatal("RSA key size %d out of range", size);
@@ -894,6 +903,9 @@ main(int argc, char **argv) {
 	case DNS_KEYALG_NSEC3RSASHA1:
 	case DNS_KEYALG_RSASHA256:
 	case DNS_KEYALG_RSASHA512:
+	case DNS_KEYALG_RSASHA3256:
+	case DNS_KEYALG_RSASHA3384:
+	case DNS_KEYALG_RSASHA3512:
 		show_progress = ISC_TRUE;
 		break;
 

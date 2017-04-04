@@ -52,6 +52,7 @@ int verbose;
 static const char *algs = "RSA | RSAMD5 | DH | DSA | RSASHA1 |"
 			  " NSEC3DSA | NSEC3RSASHA1 |"
 			  " RSASHA256 | RSASHA512 | ECCGOST |"
+			  " RSASHA3256 | RSASHA3384 | RSASHA3512 |"
 			  " ECDSAP256SHA256 | ECDSAP384SHA384";
 
 ISC_PLATFORM_NORETURN_PRE static void
@@ -436,6 +437,8 @@ main(int argc, char **argv) {
 		if (use_nsec3 &&
 		    alg != DST_ALG_NSEC3DSA && alg != DST_ALG_NSEC3RSASHA1 &&
 		    alg != DST_ALG_RSASHA256 && alg != DST_ALG_RSASHA512 &&
+		    alg != DST_ALG_RSASHA3256 && alg != DST_ALG_RSASHA3384 &&
+		    alg != DST_ALG_RSASHA3512 &&
 		    alg != DST_ALG_ECCGOST &&
 		    alg != DST_ALG_ECDSA256 && alg != DST_ALG_ECDSA384) {
 			fatal("%s is incompatible with NSEC3; "

@@ -213,6 +213,12 @@ dst_lib_init2(isc_mem_t *mctx, isc_entropy_t *ectx,
 				    DST_ALG_RSASHA256));
 	RETERR(dst__opensslrsa_init(&dst_t_func[DST_ALG_RSASHA512],
 				    DST_ALG_RSASHA512));
+	RETERR(dst__opensslrsa_init(&dst_t_func[DST_ALG_RSASHA3256],
+				    DST_ALG_RSASHA3256));
+	RETERR(dst__opensslrsa_init(&dst_t_func[DST_ALG_RSASHA3384],
+				    DST_ALG_RSASHA3384));
+	RETERR(dst__opensslrsa_init(&dst_t_func[DST_ALG_RSASHA3512],
+				    DST_ALG_RSASHA3512));
 #if defined(HAVE_OPENSSL_DSA) && !defined(PK11_DSA_DISABLE)
 	RETERR(dst__openssldsa_init(&dst_t_func[DST_ALG_DSA]));
 	RETERR(dst__openssldsa_init(&dst_t_func[DST_ALG_NSEC3DSA]));
@@ -236,6 +242,9 @@ dst_lib_init2(isc_mem_t *mctx, isc_entropy_t *ectx,
 	RETERR(dst__pkcs11rsa_init(&dst_t_func[DST_ALG_NSEC3RSASHA1]));
 	RETERR(dst__pkcs11rsa_init(&dst_t_func[DST_ALG_RSASHA256]));
 	RETERR(dst__pkcs11rsa_init(&dst_t_func[DST_ALG_RSASHA512]));
+	RETERR(dst__pkcs11rsa_init(&dst_t_func[DST_ALG_RSASHA3256]));
+	RETERR(dst__pkcs11rsa_init(&dst_t_func[DST_ALG_RSASHA3384]));
+	RETERR(dst__pkcs11rsa_init(&dst_t_func[DST_ALG_RSASHA3512]));
 #ifndef PK11_DSA_DISABLE
 	RETERR(dst__pkcs11dsa_init(&dst_t_func[DST_ALG_DSA]));
 	RETERR(dst__pkcs11dsa_init(&dst_t_func[DST_ALG_NSEC3DSA]));
@@ -1272,6 +1281,9 @@ dst_key_sigsize(const dst_key_t *key, unsigned int *n) {
 	case DST_ALG_NSEC3RSASHA1:
 	case DST_ALG_RSASHA256:
 	case DST_ALG_RSASHA512:
+	case DST_ALG_RSASHA3256:
+	case DST_ALG_RSASHA3384:
+	case DST_ALG_RSASHA3512:
 		*n = (key->key_size + 7) / 8;
 		break;
 #ifndef PK11_DSA_DISABLE
@@ -1621,6 +1633,9 @@ issymmetric(const dst_key_t *key) {
 	case DST_ALG_NSEC3RSASHA1:
 	case DST_ALG_RSASHA256:
 	case DST_ALG_RSASHA512:
+	case DST_ALG_RSASHA3256:
+	case DST_ALG_RSASHA3384:
+	case DST_ALG_RSASHA3512:
 #ifndef PK11_DSA_DISABLE
 	case DST_ALG_DSA:
 	case DST_ALG_NSEC3DSA:
@@ -1918,6 +1933,8 @@ algorithm_status(unsigned int alg) {
 	    alg == DST_ALG_HMACMD5 || alg == DST_ALG_NSEC3DSA ||
 	    alg == DST_ALG_NSEC3RSASHA1 ||
 	    alg == DST_ALG_RSASHA256 || alg == DST_ALG_RSASHA512 ||
+	    alg == DST_ALG_RSASHA3256 || alg == DST_ALG_RSASHA3384 ||
+	    alg == DST_ALG_RSASHA3512 ||
 	    alg == DST_ALG_ECCGOST ||
 	    alg == DST_ALG_ECDSA256 || alg == DST_ALG_ECDSA384)
 		return (DST_R_NOCRYPTO);

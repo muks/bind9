@@ -22,6 +22,7 @@
 #include <isc/hmacsha.h>
 #include <isc/md5.h>
 #include <isc/sha1.h>
+#include <isc/sha3.h>
 #include <isc/util.h>
 #include <isc/print.h>
 #include <isc/string.h>
@@ -214,7 +215,7 @@ ATF_TC_BODY(isc_sha1, tc) {
 
 ATF_TC(isc_sha224);
 ATF_TC_HEAD(isc_sha224, tc) {
-	atf_tc_set_md_var(tc, "descr", "sha224 examples from RFC4634");
+	atf_tc_set_md_var(tc, "descr", "SHA-224 examples from RFC4634");
 }
 ATF_TC_BODY(isc_sha224, tc) {
 	isc_sha224_t sha224;
@@ -347,7 +348,7 @@ ATF_TC_BODY(isc_sha224, tc) {
 
 ATF_TC(isc_sha256);
 ATF_TC_HEAD(isc_sha256, tc) {
-	atf_tc_set_md_var(tc, "descr", "sha224 examples from RFC4634");
+	atf_tc_set_md_var(tc, "descr", "SHA-256 examples from RFC4634");
 }
 ATF_TC_BODY(isc_sha256, tc) {
 	isc_sha256_t sha256;
@@ -479,7 +480,7 @@ ATF_TC_BODY(isc_sha256, tc) {
 
 ATF_TC(isc_sha384);
 ATF_TC_HEAD(isc_sha384, tc) {
-	atf_tc_set_md_var(tc, "descr", "sha224 examples from RFC4634");
+	atf_tc_set_md_var(tc, "descr", "SHA-384 examples from RFC4634");
 }
 ATF_TC_BODY(isc_sha384, tc) {
 	isc_sha384_t sha384;
@@ -625,7 +626,7 @@ ATF_TC_BODY(isc_sha384, tc) {
 
 ATF_TC(isc_sha512);
 ATF_TC_HEAD(isc_sha512, tc) {
-	atf_tc_set_md_var(tc, "descr", "sha224 examples from RFC4634");
+	atf_tc_set_md_var(tc, "descr", "SHA-512 examples from RFC4634");
 }
 ATF_TC_BODY(isc_sha512, tc) {
 	isc_sha512_t sha512;
@@ -764,6 +765,180 @@ ATF_TC_BODY(isc_sha512, tc) {
 		* isc_sha224_final(&sha224, digest);
 		 */
 		tohexstr(digest, ISC_SHA512_DIGESTLENGTH, str);
+		ATF_CHECK_STREQ(str, testcase->result);
+
+		testcase++;
+	}
+}
+
+ATF_TC(isc_sha3_256);
+ATF_TC_HEAD(isc_sha3_256, tc) {
+	atf_tc_set_md_var(tc, "descr", "SHA3-256 examples from FIPS 202");
+}
+ATF_TC_BODY(isc_sha3_256, tc) {
+	isc_sha3_256_t sha256;
+	int i;
+
+	UNUSED(tc);
+
+	/*
+	 * These are the various test vectors.	All of these are passed
+	 * through the hash function and the results are compared to the
+	 * result specified here.
+	 */
+	hash_testcase_t testcases[] = {
+		/* Test 1 */
+		{
+			TEST_INPUT(""),
+			"0xA7FFC6F8BF1ED76651C14756A061D662"
+			"F580FF4DE43B49FA82D80A4B80F8434A",
+			1
+		},
+		/* Test 2 */
+		{
+			TEST_INPUT("\xa3"),
+			"0x79F38ADEC5C20307A98EF76E8324AFBF"
+			"D46CFD81B22E3973C65FA1BD9DE31787",
+			200
+		},
+		{ NULL, 0, NULL, 1 }
+	};
+
+	hash_testcase_t *testcase = testcases;
+
+	while (testcase->input != NULL && testcase->result != NULL) {
+		isc_sha3_256_init(&sha256);
+		for(i = 0; i < testcase->repeats; i++) {
+			isc_sha3_256_update(&sha256,
+					  (const isc_uint8_t *) testcase->input,
+					  testcase->input_len);
+		}
+		isc_sha3_256_final(digest, &sha256);
+		/*
+		*API inconsistency BUG HERE
+		* in order to be consistant with the other isc_hash_final
+		* functions the call should be
+		* isc_sha3_224_final(&sha224, digest);
+		 */
+		tohexstr(digest, ISC_SHA3_256_DIGESTLENGTH, str);
+		ATF_CHECK_STREQ(str, testcase->result);
+
+		testcase++;
+	}
+}
+
+ATF_TC(isc_sha3_384);
+ATF_TC_HEAD(isc_sha3_384, tc) {
+	atf_tc_set_md_var(tc, "descr", "SHA3-384 examples from FIPS 202");
+}
+ATF_TC_BODY(isc_sha3_384, tc) {
+	isc_sha3_384_t sha384;
+	int i;
+
+	UNUSED(tc);
+
+	/*
+	 * These are the various test vectors.	All of these are passed
+	 * through the hash function and the results are compared to the
+	 * result specified here.
+	 */
+	hash_testcase_t testcases[] = {
+		/* Test 1 */
+		{
+			TEST_INPUT(""),
+			"0x0C63A75B845E4F7D01107D852E4C2485"
+			"C51A50AAAA94FC61995E71BBEE983A2A"
+			"C3713831264ADB47FB6BD1E058D5F004",
+			1
+		},
+		/* Test 2 */
+		{
+			TEST_INPUT("\xa3"),
+			"0x1881DE2CA7E41EF95DC4732B8F5F002B"
+			"189CC1E42B74168ED1732649CE1DBCDD"
+			"76197A31FD55EE989F2D7050DD473E8F",
+			200
+		},
+		{ NULL, 0, NULL, 1 }
+	};
+
+	hash_testcase_t *testcase = testcases;
+
+	while (testcase->input != NULL && testcase->result != NULL) {
+		isc_sha3_384_init(&sha384);
+		for(i = 0; i < testcase->repeats; i++) {
+			isc_sha3_384_update(&sha384,
+					  (const isc_uint8_t *) testcase->input,
+					  testcase->input_len);
+		}
+		isc_sha3_384_final(digest, &sha384);
+		/*
+		*API inconsistency BUG HERE
+		* in order to be consistant with the other isc_hash_final
+		* functions the call should be
+		* isc_sha3_224_final(&sha224, digest);
+		 */
+		tohexstr(digest, ISC_SHA3_384_DIGESTLENGTH, str);
+		ATF_CHECK_STREQ(str, testcase->result);
+
+		testcase++;
+	}
+}
+
+ATF_TC(isc_sha3_512);
+ATF_TC_HEAD(isc_sha3_512, tc) {
+	atf_tc_set_md_var(tc, "descr", "SHA3-512 examples from FIPS 202");
+}
+ATF_TC_BODY(isc_sha3_512, tc) {
+	isc_sha3_512_t sha512;
+	int i;
+
+	UNUSED(tc);
+
+	/*
+	 * These are the various test vectors.	All of these are passed
+	 * through the hash function and the results are compared to the
+	 * result specified here.
+	 */
+	hash_testcase_t testcases[] = {
+		/* Test 1 */
+		{
+			TEST_INPUT(""),
+			"0xA69F73CCA23A9AC5C8B567DC185A756E"
+			"97C982164FE25859E0D1DCC1475C80A6"
+			"15B2123AF1F5F94C11E3E9402C3AC558"
+			"F500199D95B6D3E301758586281DCD26",
+			1
+		},
+		/* Test 2 */
+		{
+			TEST_INPUT("\xa3"),
+			"0xE76DFAD22084A8B1467FCF2FFA58361B"
+			"EC7628EDF5F3FDC0E4805DC48CAEECA8"
+			"1B7C13C30ADF52A3659584739A2DF46B"
+			"E589C51CA1A4A8416DF6545A1CE8BA00",
+			200
+		},
+		{ NULL, 0, NULL, 1 }
+	};
+
+	hash_testcase_t *testcase = testcases;
+
+	while (testcase->input != NULL && testcase->result != NULL) {
+		isc_sha3_512_init(&sha512);
+		for(i = 0; i < testcase->repeats; i++) {
+			isc_sha3_512_update(&sha512,
+					  (const isc_uint8_t *) testcase->input,
+					  testcase->input_len);
+		}
+		isc_sha3_512_final(digest, &sha512);
+		/*
+		*API inconsistency BUG HERE
+		* in order to be consistant with the other isc_hash_final
+		* functions the call should be
+		* isc_sha3_224_final(&sha224, digest);
+		 */
+		tohexstr(digest, ISC_SHA3_512_DIGESTLENGTH, str);
 		ATF_CHECK_STREQ(str, testcase->result);
 
 		testcase++;
@@ -1990,6 +2165,9 @@ ATF_TP_ADD_TCS(tp) {
 	ATF_TP_ADD_TC(tp, isc_sha256);
 	ATF_TP_ADD_TC(tp, isc_sha384);
 	ATF_TP_ADD_TC(tp, isc_sha512);
+	ATF_TP_ADD_TC(tp, isc_sha3_256);
+	ATF_TP_ADD_TC(tp, isc_sha3_384);
+	ATF_TP_ADD_TC(tp, isc_sha3_512);
 	ATF_TP_ADD_TC(tp, isc_crc64);
 
 	return (atf_no_error());

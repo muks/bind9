@@ -97,10 +97,10 @@ usage(void) {
 	fprintf(stderr, "        RSASHA256:\t[512..%d]\n", MAX_RSA);
 	fprintf(stderr, "        RSASHA512:\t[1024..%d]\n", MAX_RSA);
 	fprintf(stderr, "        RSASHA2-256:\t[1024..%d]\n", MAX_RSA);
-	fprintf(stderr, "        RSASHA2-512:\t[1024..%d]\n", MAX_RSA);
+	fprintf(stderr, "        RSASHA2-512:\t[1280..%d]\n", MAX_RSA);
 	fprintf(stderr, "        RSASHA3-256:\t[1024..%d]\n", MAX_RSA);
 	fprintf(stderr, "        RSASHA3-384:\t[1024..%d]\n", MAX_RSA);
-	fprintf(stderr, "        RSASHA3-512:\t[1024..%d]\n", MAX_RSA);
+	fprintf(stderr, "        RSASHA3-512:\t[1280..%d]\n", MAX_RSA);
 	fprintf(stderr, "        DH:\t\t[128..4096]\n");
 	fprintf(stderr, "        DSA:\t\t[512..1024] and divisible by 64\n");
 	fprintf(stderr, "        NSEC3DSA:\t[512..1024] and divisible "
@@ -763,11 +763,14 @@ main(int argc, char **argv) {
 		break;
 	case DNS_KEYALG_RSASHA512:
 	case DNS_KEYALG_RSASHA2_256:
-	case DNS_KEYALG_RSASHA2_512:
 	case DNS_KEYALG_RSASHA3_256:
 	case DNS_KEYALG_RSASHA3_384:
-	case DNS_KEYALG_RSASHA3_512:
 		if (size != 0 && (size < 1024 || size > MAX_RSA))
+			fatal("RSA key size %d out of range", size);
+		break;
+	case DNS_KEYALG_RSASHA2_512:
+	case DNS_KEYALG_RSASHA3_512:
+		if (size != 0 && (size < 1280 || size > MAX_RSA))
 			fatal("RSA key size %d out of range", size);
 		break;
 	case DNS_KEYALG_DH:

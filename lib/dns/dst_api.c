@@ -213,6 +213,10 @@ dst_lib_init2(isc_mem_t *mctx, isc_entropy_t *ectx,
 				    DST_ALG_RSASHA256));
 	RETERR(dst__opensslrsa_init(&dst_t_func[DST_ALG_RSASHA512],
 				    DST_ALG_RSASHA512));
+	RETERR(dst__opensslrsa_init(&dst_t_func[DST_ALG_RSASHA2_256],
+				    DST_ALG_RSASHA2_256));
+	RETERR(dst__opensslrsa_init(&dst_t_func[DST_ALG_RSASHA2_512],
+				    DST_ALG_RSASHA2_512));
 	RETERR(dst__opensslrsa_init(&dst_t_func[DST_ALG_RSASHA3_256],
 				    DST_ALG_RSASHA3_256));
 	RETERR(dst__opensslrsa_init(&dst_t_func[DST_ALG_RSASHA3_384],
@@ -242,6 +246,8 @@ dst_lib_init2(isc_mem_t *mctx, isc_entropy_t *ectx,
 	RETERR(dst__pkcs11rsa_init(&dst_t_func[DST_ALG_NSEC3RSASHA1]));
 	RETERR(dst__pkcs11rsa_init(&dst_t_func[DST_ALG_RSASHA256]));
 	RETERR(dst__pkcs11rsa_init(&dst_t_func[DST_ALG_RSASHA512]));
+	RETERR(dst__pkcs11rsa_init(&dst_t_func[DST_ALG_RSASHA2_256]));
+	RETERR(dst__pkcs11rsa_init(&dst_t_func[DST_ALG_RSASHA2_512]));
 	RETERR(dst__pkcs11rsa_init(&dst_t_func[DST_ALG_RSASHA3_256]));
 	RETERR(dst__pkcs11rsa_init(&dst_t_func[DST_ALG_RSASHA3_384]));
 	RETERR(dst__pkcs11rsa_init(&dst_t_func[DST_ALG_RSASHA3_512]));
@@ -1285,6 +1291,8 @@ dst_key_sigsize(const dst_key_t *key, unsigned int *n) {
 	case DST_ALG_NSEC3RSASHA1:
 	case DST_ALG_RSASHA256:
 	case DST_ALG_RSASHA512:
+	case DST_ALG_RSASHA2_256:
+	case DST_ALG_RSASHA2_512:
 	case DST_ALG_RSASHA3_256:
 	case DST_ALG_RSASHA3_384:
 	case DST_ALG_RSASHA3_512:
@@ -1637,6 +1645,8 @@ issymmetric(const dst_key_t *key) {
 	case DST_ALG_NSEC3RSASHA1:
 	case DST_ALG_RSASHA256:
 	case DST_ALG_RSASHA512:
+	case DST_ALG_RSASHA2_256:
+	case DST_ALG_RSASHA2_512:
 	case DST_ALG_RSASHA3_256:
 	case DST_ALG_RSASHA3_384:
 	case DST_ALG_RSASHA3_512:
@@ -1937,6 +1947,7 @@ algorithm_status(unsigned int alg) {
 	    alg == DST_ALG_HMACMD5 || alg == DST_ALG_NSEC3DSA ||
 	    alg == DST_ALG_NSEC3RSASHA1 ||
 	    alg == DST_ALG_RSASHA256 || alg == DST_ALG_RSASHA512 ||
+	    alg == DST_ALG_RSASHA2_256 || alg == DST_ALG_RSASHA2_512 ||
 	    alg == DST_ALG_RSASHA3_256 || alg == DST_ALG_RSASHA3_384 ||
 	    alg == DST_ALG_RSASHA3_512 ||
 	    alg == DST_ALG_ECCGOST ||

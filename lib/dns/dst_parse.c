@@ -370,6 +370,8 @@ check_data(const dst_private_t *priv, const unsigned int alg,
 	case DST_ALG_NSEC3RSASHA1:
 	case DST_ALG_RSASHA256:
 	case DST_ALG_RSASHA512:
+	case DST_ALG_RSASHA2_256:
+	case DST_ALG_RSASHA2_512:
 	case DST_ALG_RSASHA3_256:
 	case DST_ALG_RSASHA3_384:
 	case DST_ALG_RSASHA3_512:
@@ -724,6 +726,12 @@ dst__privstruct_writefile(const dst_key_t *key, const dst_private_t *priv,
 		break;
 	case DST_ALG_RSASHA512:
 		fprintf(fp, "(RSASHA512)\n");
+		break;
+	case DST_ALG_RSASHA2_256:
+		fprintf(fp, "(RSASHA2-256)\n");
+		break;
+	case DST_ALG_RSASHA2_512:
+		fprintf(fp, "(RSASHA2-512)\n");
 		break;
 	case DST_ALG_RSASHA3_256:
 		fprintf(fp, "(RSASHA3-256)\n");

@@ -255,6 +255,8 @@ opensslrsa_createctx(dst_key_t *key, dst_context_t *dctx) {
 		dctx->key->key_alg == DST_ALG_NSEC3RSASHA1 ||
 		dctx->key->key_alg == DST_ALG_RSASHA256 ||
 		dctx->key->key_alg == DST_ALG_RSASHA512 ||
+		dctx->key->key_alg == DST_ALG_RSASHA2_256 ||
+		dctx->key->key_alg == DST_ALG_RSASHA2_512 ||
 		dctx->key->key_alg == DST_ALG_RSASHA3_256 ||
 		dctx->key->key_alg == DST_ALG_RSASHA3_384 ||
 		dctx->key->key_alg == DST_ALG_RSASHA3_512);
@@ -263,6 +265,8 @@ opensslrsa_createctx(dst_key_t *key, dst_context_t *dctx) {
 		dctx->key->key_alg == DST_ALG_NSEC3RSASHA1 ||
 		dctx->key->key_alg == DST_ALG_RSASHA256 ||
 		dctx->key->key_alg == DST_ALG_RSASHA512 ||
+		dctx->key->key_alg == DST_ALG_RSASHA2_256 ||
+		dctx->key->key_alg == DST_ALG_RSASHA2_512 ||
 		dctx->key->key_alg == DST_ALG_RSASHA3_256 ||
 		dctx->key->key_alg == DST_ALG_RSASHA3_384 ||
 		dctx->key->key_alg == DST_ALG_RSASHA3_512);
@@ -355,6 +359,30 @@ opensslrsa_createctx(dst_key_t *key, dst_context_t *dctx) {
 			dctx->ctxdata.sha512ctx = sha512ctx;
 		}
 		break;
+	case DST_ALG_RSASHA2_256:
+		{
+			isc_sha256_t *sha2_256ctx;
+
+			sha2_256ctx = isc_mem_get(dctx->mctx,
+						  sizeof(isc_sha256_t));
+			if (sha2_256ctx == NULL)
+				return (ISC_R_NOMEMORY);
+			isc_sha256_init(sha2_256ctx);
+			dctx->ctxdata.sha2_256ctx = sha2_256ctx;
+		}
+		break;
+	case DST_ALG_RSASHA2_512:
+		{
+			isc_sha512_t *sha2_512ctx;
+
+			sha2_512ctx = isc_mem_get(dctx->mctx,
+						  sizeof(isc_sha512_t));
+			if (sha2_512ctx == NULL)
+				return (ISC_R_NOMEMORY);
+			isc_sha512_init(sha2_512ctx);
+			dctx->ctxdata.sha2_512ctx = sha2_512ctx;
+		}
+		break;
 	case DST_ALG_RSASHA3_256:
 		{
 			isc_sha3_256_t *sha3_256ctx;
@@ -411,6 +439,8 @@ opensslrsa_destroyctx(dst_context_t *dctx) {
 		dctx->key->key_alg == DST_ALG_NSEC3RSASHA1 ||
 		dctx->key->key_alg == DST_ALG_RSASHA256 ||
 		dctx->key->key_alg == DST_ALG_RSASHA512 ||
+		dctx->key->key_alg == DST_ALG_RSASHA2_256 ||
+		dctx->key->key_alg == DST_ALG_RSASHA2_512 ||
 		dctx->key->key_alg == DST_ALG_RSASHA3_256 ||
 		dctx->key->key_alg == DST_ALG_RSASHA3_384 ||
 		dctx->key->key_alg == DST_ALG_RSASHA3_512);
@@ -419,6 +449,8 @@ opensslrsa_destroyctx(dst_context_t *dctx) {
 		dctx->key->key_alg == DST_ALG_NSEC3RSASHA1 ||
 		dctx->key->key_alg == DST_ALG_RSASHA256 ||
 		dctx->key->key_alg == DST_ALG_RSASHA512 ||
+		dctx->key->key_alg == DST_ALG_RSASHA2_256 ||
+		dctx->key->key_alg == DST_ALG_RSASHA2_512 ||
 		dctx->key->key_alg == DST_ALG_RSASHA3_256 ||
 		dctx->key->key_alg == DST_ALG_RSASHA3_384 ||
 		dctx->key->key_alg == DST_ALG_RSASHA3_512);
@@ -482,6 +514,30 @@ opensslrsa_destroyctx(dst_context_t *dctx) {
 			}
 		}
 		break;
+	case DST_ALG_RSASHA2_256:
+		{
+			isc_sha256_t *sha2_256ctx = dctx->ctxdata.sha2_256ctx;
+
+			if (sha2_256ctx != NULL) {
+				isc_sha256_invalidate(sha2_256ctx);
+				isc_mem_put(dctx->mctx, sha2_256ctx,
+					    sizeof(isc_sha256_t));
+				dctx->ctxdata.sha2_256ctx = NULL;
+			}
+		}
+		break;
+	case DST_ALG_RSASHA2_512:
+		{
+			isc_sha512_t *sha2_512ctx = dctx->ctxdata.sha2_512ctx;
+
+			if (sha2_512ctx != NULL) {
+				isc_sha512_invalidate(sha2_512ctx);
+				isc_mem_put(dctx->mctx, sha2_512ctx,
+					    sizeof(isc_sha512_t));
+				dctx->ctxdata.sha2_512ctx = NULL;
+			}
+		}
+		break;
 	case DST_ALG_RSASHA3_256:
 		{
 			isc_sha3_256_t *sha3_256ctx = dctx->ctxdata.sha3_256ctx;
@@ -536,6 +592,8 @@ opensslrsa_adddata(dst_context_t *dctx, const isc_region_t *data) {
 		dctx->key->key_alg == DST_ALG_NSEC3RSASHA1 ||
 		dctx->key->key_alg == DST_ALG_RSASHA256 ||
 		dctx->key->key_alg == DST_ALG_RSASHA512 ||
+		dctx->key->key_alg == DST_ALG_RSASHA2_256 ||
+		dctx->key->key_alg == DST_ALG_RSASHA2_512 ||
 		dctx->key->key_alg == DST_ALG_RSASHA3_256 ||
 		dctx->key->key_alg == DST_ALG_RSASHA3_384 ||
 		dctx->key->key_alg == DST_ALG_RSASHA3_512);
@@ -544,6 +602,8 @@ opensslrsa_adddata(dst_context_t *dctx, const isc_region_t *data) {
 		dctx->key->key_alg == DST_ALG_NSEC3RSASHA1 ||
 		dctx->key->key_alg == DST_ALG_RSASHA256 ||
 		dctx->key->key_alg == DST_ALG_RSASHA512 ||
+		dctx->key->key_alg == DST_ALG_RSASHA2_256 ||
+		dctx->key->key_alg == DST_ALG_RSASHA2_512 ||
 		dctx->key->key_alg == DST_ALG_RSASHA3_256 ||
 		dctx->key->key_alg == DST_ALG_RSASHA3_384 ||
 		dctx->key->key_alg == DST_ALG_RSASHA3_512);
@@ -586,6 +646,20 @@ opensslrsa_adddata(dst_context_t *dctx, const isc_region_t *data) {
 			isc_sha512_t *sha512ctx = dctx->ctxdata.sha512ctx;
 
 			isc_sha512_update(sha512ctx, data->base, data->length);
+		}
+		break;
+	case DST_ALG_RSASHA2_256:
+		{
+			isc_sha256_t *sha2_256ctx = dctx->ctxdata.sha2_256ctx;
+
+			isc_sha256_update(sha2_256ctx, data->base, data->length);
+		}
+		break;
+	case DST_ALG_RSASHA2_512:
+		{
+			isc_sha512_t *sha2_512ctx = dctx->ctxdata.sha2_512ctx;
+
+			isc_sha512_update(sha2_512ctx, data->base, data->length);
 		}
 		break;
 	case DST_ALG_RSASHA3_256:
@@ -678,6 +752,26 @@ emsa_pss_encode(unsigned int key_alg,
 	 * 6. Let H = Hash(M'), an octet string of length hLen.
 	 */
 	switch (key_alg) {
+	case DST_ALG_RSASHA2_256: {
+		isc_sha256_t context;
+
+		isc_sha256_init(&context);
+		isc_sha256_update(&context, rsapss_mp, 2 * digestlen + 8);
+		isc_sha256_final(rsapss_h, &context);
+		INSIST(digestlen == ISC_SHA256_DIGESTLENGTH);
+		break;
+	}
+
+	case DST_ALG_RSASHA2_512: {
+		isc_sha512_t context;
+
+		isc_sha512_init(&context);
+		isc_sha512_update(&context, rsapss_mp, 2 * digestlen + 8);
+		isc_sha512_final(rsapss_h, &context);
+		INSIST(digestlen == ISC_SHA512_DIGESTLENGTH);
+		break;
+	}
+
 	case DST_ALG_RSASHA3_256: {
 		isc_sha3_256_t context;
 
@@ -726,6 +820,36 @@ emsa_pss_encode(unsigned int key_alg,
 	 * (emLen - hLen - 1) is digestlen.
 	 */
 	switch (key_alg) {
+	case DST_ALG_RSASHA2_256: {
+		isc_sha256_t context;
+
+		isc_sha256_init(&context);
+		isc_sha256_update(&context, rsapss_h, digestlen);
+		isc_sha256_update(&context, rsapss_mgf_c0, 4);
+		isc_sha256_final(rsapss_dbmask, &context);
+
+		isc_sha256_init(&context);
+		isc_sha256_update(&context, rsapss_h, digestlen);
+		isc_sha256_update(&context, rsapss_mgf_c1, 4);
+		isc_sha256_final(rsapss_dbmask + digestlen, &context);
+		break;
+	}
+
+	case DST_ALG_RSASHA2_512: {
+		isc_sha512_t context;
+
+		isc_sha512_init(&context);
+		isc_sha512_update(&context, rsapss_h, digestlen);
+		isc_sha512_update(&context, rsapss_mgf_c0, 4);
+		isc_sha512_final(rsapss_dbmask, &context);
+
+		isc_sha512_init(&context);
+		isc_sha512_update(&context, rsapss_h, digestlen);
+		isc_sha512_update(&context, rsapss_mgf_c1, 4);
+		isc_sha512_final(rsapss_dbmask + digestlen, &context);
+		break;
+	}
+
 	case DST_ALG_RSASHA3_256: {
 		isc_sha3_256_t context;
 
@@ -852,6 +976,36 @@ emsa_pss_verify(unsigned int key_alg,
 	 * 7. Let dbMask = MGF(H, emLen - hLen - 1).
 	 */
 	switch (key_alg) {
+	case DST_ALG_RSASHA2_256: {
+		isc_sha256_t context;
+
+		isc_sha256_init(&context);
+		isc_sha256_update(&context, rsapss_h, digestlen);
+		isc_sha256_update(&context, rsapss_mgf_c0, 4);
+		isc_sha256_final(rsapss_dbmask, &context);
+
+		isc_sha256_init(&context);
+		isc_sha256_update(&context, rsapss_h, digestlen);
+		isc_sha256_update(&context, rsapss_mgf_c1, 4);
+		isc_sha256_final(rsapss_dbmask + digestlen, &context);
+		break;
+	}
+
+	case DST_ALG_RSASHA2_512: {
+		isc_sha512_t context;
+
+		isc_sha512_init(&context);
+		isc_sha512_update(&context, rsapss_h, digestlen);
+		isc_sha512_update(&context, rsapss_mgf_c0, 4);
+		isc_sha512_final(rsapss_dbmask, &context);
+
+		isc_sha512_init(&context);
+		isc_sha512_update(&context, rsapss_h, digestlen);
+		isc_sha512_update(&context, rsapss_mgf_c1, 4);
+		isc_sha512_final(rsapss_dbmask + digestlen, &context);
+		break;
+	}
+
 	case DST_ALG_RSASHA3_256: {
 		isc_sha3_256_t context;
 
@@ -943,6 +1097,26 @@ emsa_pss_verify(unsigned int key_alg,
 	 * 13. Let H' = Hash(M'), an octet string of length hLen.
 	 */
 	switch (key_alg) {
+	case DST_ALG_RSASHA2_256: {
+		isc_sha256_t context;
+
+		isc_sha256_init(&context);
+		isc_sha256_update(&context, rsapss_mp, 2 * digestlen + 8);
+		isc_sha256_final(rsapss_hp, &context);
+		INSIST(digestlen == ISC_SHA256_DIGESTLENGTH);
+		break;
+	}
+
+	case DST_ALG_RSASHA2_512: {
+		isc_sha512_t context;
+
+		isc_sha512_init(&context);
+		isc_sha512_update(&context, rsapss_mp, 2 * digestlen + 8);
+		isc_sha512_final(rsapss_hp, &context);
+		INSIST(digestlen == ISC_SHA512_DIGESTLENGTH);
+		break;
+	}
+
 	case DST_ALG_RSASHA3_256: {
 		isc_sha3_256_t context;
 
@@ -1014,6 +1188,8 @@ opensslrsa_sign(dst_context_t *dctx, isc_buffer_t *sig) {
 		dctx->key->key_alg == DST_ALG_NSEC3RSASHA1 ||
 		dctx->key->key_alg == DST_ALG_RSASHA256 ||
 		dctx->key->key_alg == DST_ALG_RSASHA512 ||
+		dctx->key->key_alg == DST_ALG_RSASHA2_256 ||
+		dctx->key->key_alg == DST_ALG_RSASHA2_512 ||
 		dctx->key->key_alg == DST_ALG_RSASHA3_256 ||
 		dctx->key->key_alg == DST_ALG_RSASHA3_384 ||
 		dctx->key->key_alg == DST_ALG_RSASHA3_512);
@@ -1022,6 +1198,8 @@ opensslrsa_sign(dst_context_t *dctx, isc_buffer_t *sig) {
 		dctx->key->key_alg == DST_ALG_NSEC3RSASHA1 ||
 		dctx->key->key_alg == DST_ALG_RSASHA256 ||
 		dctx->key->key_alg == DST_ALG_RSASHA512 ||
+		dctx->key->key_alg == DST_ALG_RSASHA2_256 ||
+		dctx->key->key_alg == DST_ALG_RSASHA2_512 ||
 		dctx->key->key_alg == DST_ALG_RSASHA3_256 ||
 		dctx->key->key_alg == DST_ALG_RSASHA3_384 ||
 		dctx->key->key_alg == DST_ALG_RSASHA3_512);
@@ -1092,6 +1270,22 @@ opensslrsa_sign(dst_context_t *dctx, isc_buffer_t *sig) {
 #endif
 		}
 		break;
+	case DST_ALG_RSASHA2_256:
+		{
+			isc_sha256_t *sha2_256ctx = dctx->ctxdata.sha2_256ctx;
+
+			isc_sha256_final(digest, sha2_256ctx);
+			digestlen = ISC_SHA256_DIGESTLENGTH;
+		}
+		break;
+	case DST_ALG_RSASHA2_512:
+		{
+			isc_sha512_t *sha2_512ctx = dctx->ctxdata.sha2_512ctx;
+
+			isc_sha512_final(digest, sha2_512ctx);
+			digestlen = ISC_SHA512_DIGESTLENGTH;
+		}
+		break;
 	case DST_ALG_RSASHA3_256:
 		{
 			isc_sha3_256_t *sha3_256ctx = dctx->ctxdata.sha3_256ctx;
@@ -1149,6 +1343,8 @@ opensslrsa_sign(dst_context_t *dctx, isc_buffer_t *sig) {
 			siglen = status;
 		break;
 
+	case DST_ALG_RSASHA2_256:
+	case DST_ALG_RSASHA2_512:
 	case DST_ALG_RSASHA3_256:
 	case DST_ALG_RSASHA3_384:
 	case DST_ALG_RSASHA3_512: {
@@ -1172,6 +1368,8 @@ opensslrsa_sign(dst_context_t *dctx, isc_buffer_t *sig) {
 	}
 #else
 	switch (dctx->key->key_alg) {
+	case DST_ALG_RSASHA2_256:
+	case DST_ALG_RSASHA2_512:
 	case DST_ALG_RSASHA3_256:
 	case DST_ALG_RSASHA3_384:
 	case DST_ALG_RSASHA3_512: {
@@ -1234,6 +1432,8 @@ opensslrsa_verify2(dst_context_t *dctx, int maxbits, const isc_region_t *sig) {
 		dctx->key->key_alg == DST_ALG_NSEC3RSASHA1 ||
 		dctx->key->key_alg == DST_ALG_RSASHA256 ||
 		dctx->key->key_alg == DST_ALG_RSASHA512 ||
+		dctx->key->key_alg == DST_ALG_RSASHA2_256 ||
+		dctx->key->key_alg == DST_ALG_RSASHA2_512 ||
 		dctx->key->key_alg == DST_ALG_RSASHA3_256 ||
 		dctx->key->key_alg == DST_ALG_RSASHA3_384 ||
 		dctx->key->key_alg == DST_ALG_RSASHA3_512);
@@ -1242,6 +1442,8 @@ opensslrsa_verify2(dst_context_t *dctx, int maxbits, const isc_region_t *sig) {
 		dctx->key->key_alg == DST_ALG_NSEC3RSASHA1 ||
 		dctx->key->key_alg == DST_ALG_RSASHA256 ||
 		dctx->key->key_alg == DST_ALG_RSASHA512 ||
+		dctx->key->key_alg == DST_ALG_RSASHA2_256 ||
+		dctx->key->key_alg == DST_ALG_RSASHA2_512 ||
 		dctx->key->key_alg == DST_ALG_RSASHA3_256 ||
 		dctx->key->key_alg == DST_ALG_RSASHA3_384 ||
 		dctx->key->key_alg == DST_ALG_RSASHA3_512);
@@ -1323,6 +1525,22 @@ opensslrsa_verify2(dst_context_t *dctx, int maxbits, const isc_region_t *sig) {
 #endif
 		}
 		break;
+	case DST_ALG_RSASHA2_256:
+		{
+			isc_sha256_t *sha2_256ctx = dctx->ctxdata.sha2_256ctx;
+
+			isc_sha256_final(digest, sha2_256ctx);
+			digestlen = ISC_SHA256_DIGESTLENGTH;
+		}
+		break;
+	case DST_ALG_RSASHA2_512:
+		{
+			isc_sha512_t *sha2_512ctx = dctx->ctxdata.sha2_512ctx;
+
+			isc_sha512_final(digest, sha2_512ctx);
+			digestlen = ISC_SHA512_DIGESTLENGTH;
+		}
+		break;
 	case DST_ALG_RSASHA3_256:
 		{
 			isc_sha3_256_t *sha3_256ctx = dctx->ctxdata.sha3_256ctx;
@@ -1400,6 +1618,8 @@ opensslrsa_verify2(dst_context_t *dctx, int maxbits, const isc_region_t *sig) {
 		}
 		break;
 
+	case DST_ALG_RSASHA2_256:
+	case DST_ALG_RSASHA2_512:
 	case DST_ALG_RSASHA3_256:
 	case DST_ALG_RSASHA3_384:
 	case DST_ALG_RSASHA3_512: {
@@ -1435,6 +1655,8 @@ opensslrsa_verify2(dst_context_t *dctx, int maxbits, const isc_region_t *sig) {
 	}
 #else
 	switch (dctx->key->key_alg) {
+	case DST_ALG_RSASHA2_256:
+	case DST_ALG_RSASHA2_512:
 	case DST_ALG_RSASHA3_256:
 	case DST_ALG_RSASHA3_384:
 	case DST_ALG_RSASHA3_512: {

@@ -166,6 +166,8 @@ struct dst_context {
 		isc_sha1_t *sha1ctx;
 		isc_sha256_t *sha256ctx;
 		isc_sha512_t *sha512ctx;
+		isc_sha256_t *sha2_256ctx;
+		isc_sha512_t *sha2_512ctx;
 		isc_sha3_256_t *sha3_256ctx;
 		isc_sha3_384_t *sha3_384ctx;
 		isc_sha3_512_t *sha3_512ctx;

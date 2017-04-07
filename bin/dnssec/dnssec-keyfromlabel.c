@@ -52,6 +52,7 @@ int verbose;
 static const char *algs = "RSA | RSAMD5 | DH | DSA | RSASHA1 |"
 			  " NSEC3DSA | NSEC3RSASHA1 |"
 			  " RSASHA256 | RSASHA512 | ECCGOST |"
+			  " RSASHA2-256 | RSASHA2-512 |"
 			  " RSASHA3-256 | RSASHA3-384 | RSASHA3-512 |"
 			  " ECDSAP256SHA256 | ECDSAP384SHA384";
 
@@ -437,6 +438,7 @@ main(int argc, char **argv) {
 		if (use_nsec3 &&
 		    alg != DST_ALG_NSEC3DSA && alg != DST_ALG_NSEC3RSASHA1 &&
 		    alg != DST_ALG_RSASHA256 && alg != DST_ALG_RSASHA512 &&
+		    alg != DST_ALG_RSASHA2_256 && alg != DST_ALG_RSASHA2_512 &&
 		    alg != DST_ALG_RSASHA3_256 && alg != DST_ALG_RSASHA3_384 &&
 		    alg != DST_ALG_RSASHA3_512 &&
 		    alg != DST_ALG_ECCGOST &&

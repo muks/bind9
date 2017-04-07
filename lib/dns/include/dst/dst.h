@@ -50,6 +50,8 @@ typedef struct dst_context 	dst_context_t;
 #define DST_ALG_NSEC3RSASHA1	7
 #define DST_ALG_RSASHA256	8
 #define DST_ALG_RSASHA512	10
+#define DST_ALG_RSASHA2_256	247 /* XXXMUKS: update to real */
+#define DST_ALG_RSASHA2_512	248 /* XXXMUKS: update to real */
 #define DST_ALG_RSASHA3_256	249 /* XXXMUKS: update to real */
 #define DST_ALG_RSASHA3_384	250 /* XXXMUKS: update to real */
 #define DST_ALG_RSASHA3_512	251 /* XXXMUKS: update to real */

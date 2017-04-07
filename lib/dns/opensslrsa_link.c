@@ -616,7 +616,7 @@ opensslrsa_adddata(dst_context_t *dctx, const isc_region_t *data) {
 	return (ISC_R_SUCCESS);
 }
 
-#if ! USE_EVP /* && OPENSSL_VERSION_NUMBER < 0x00908000L */
+#if ! USE_EVP && OPENSSL_VERSION_NUMBER < 0x00908000L
 /*
  * Digest prefixes from RFC 5702 and draft-muks-dnsop-dnssec-sha3-00.
  */
@@ -626,19 +626,263 @@ static unsigned char sha256_prefix[] =
 static unsigned char sha512_prefix[] =
 	 { 0x30, 0x51, 0x30, 0x0d, 0x06, 0x09, 0x60, 0x86, 0x48,
 	   0x01, 0x65, 0x03, 0x04, 0x02, 0x03, 0x05, 0x00, 0x04, 0x40};
-static unsigned char sha3_256_prefix[] =
-	 { 0x30, 0x31, 0x30, 0x0d, 0x06, 0x09, 0x60, 0x86, 0x48,
-	   0x01, 0x65, 0x03, 0x04, 0x02, 0x08, 0x05, 0x00, 0x04, 0x20};
-static unsigned char sha3_384_prefix[] =
-	 { 0x30, 0x31, 0x30, 0x0d, 0x06, 0x09, 0x60, 0x86, 0x48,
-	   0x01, 0x65, 0x03, 0x04, 0x02, 0x09, 0x05, 0x00, 0x04, 0x30};
-static unsigned char sha3_512_prefix[] =
-	 { 0x30, 0x51, 0x30, 0x0d, 0x06, 0x09, 0x60, 0x86, 0x48,
-	   0x01, 0x65, 0x03, 0x04, 0x02, 0x0a, 0x05, 0x00, 0x04, 0x40};
 #define PREFIXLEN sizeof(sha512_prefix)
 #else
 #define PREFIXLEN 0
 #endif
+
+static void
+emsa_pss_sign(unsigned int key_alg,
+	      const unsigned char *digest, unsigned int digestlen,
+	      unsigned char *rsapss_em)
+{
+	unsigned char rsapss_salt[ISC_SHA512_DIGESTLENGTH];
+	unsigned char rsapss_mp[2 * ISC_SHA512_DIGESTLENGTH + 8];
+	unsigned char rsapss_h[ISC_SHA512_DIGESTLENGTH];
+	unsigned char rsapss_db[ISC_SHA512_DIGESTLENGTH + 1];
+	unsigned char rsapss_mgf_c0[4] = { 0x00, 0x00, 0x00, 0x00 };
+	unsigned char rsapss_mgf_c1[4] = { 0x00, 0x00, 0x00, 0x01 };
+	unsigned char rsapss_dbmask[2 * ISC_SHA512_DIGESTLENGTH];
+	unsigned char rsapss_maskeddb[ISC_SHA512_DIGESTLENGTH + 1];
+	unsigned int i;
+
+	/* XXXMUKS: generate a random salt of digestlen here */
+	memset(rsapss_salt, 0, digestlen);
+
+	memset(rsapss_mp, 0, 8);
+	memmove(rsapss_mp + 8, digest, digestlen);
+	memmove(rsapss_mp + 8 + digestlen, rsapss_salt, digestlen);
+
+	switch (key_alg) {
+	case DST_ALG_RSASHA3_256: {
+		isc_sha3_256_t context;
+
+		isc_sha3_256_init(&context);
+		isc_sha3_256_update(&context, rsapss_mp, 2 * digestlen + 8);
+		isc_sha3_256_final(rsapss_h, &context);
+		INSIST(digestlen == ISC_SHA3_256_DIGESTLENGTH);
+		break;
+	}
+
+	case DST_ALG_RSASHA3_384: {
+		isc_sha3_384_t context;
+
+		isc_sha3_384_init(&context);
+		isc_sha3_384_update(&context, rsapss_mp, 2 * digestlen + 8);
+		isc_sha3_384_final(rsapss_h, &context);
+		INSIST(digestlen == ISC_SHA3_384_DIGESTLENGTH);
+		break;
+	}
+
+	case DST_ALG_RSASHA3_512: {
+		isc_sha3_512_t context;
+
+		isc_sha3_512_init(&context);
+		isc_sha3_512_update(&context, rsapss_mp, 2 * digestlen + 8);
+		isc_sha3_512_final(rsapss_h, &context);
+		INSIST(digestlen == ISC_SHA3_512_DIGESTLENGTH);
+		break;
+	}
+
+	default:
+		INSIST(0);
+	}
+
+	rsapss_db[0] = 0x01;
+	memmove(rsapss_db + 1, rsapss_salt, digestlen);
+
+	switch (key_alg) {
+	case DST_ALG_RSASHA3_256: {
+		isc_sha3_256_t context;
+
+		isc_sha3_256_init(&context);
+		isc_sha3_256_update(&context, rsapss_h, digestlen);
+		isc_sha3_256_update(&context, rsapss_mgf_c0, 4);
+		isc_sha3_256_final(rsapss_dbmask, &context);
+
+		isc_sha3_256_init(&context);
+		isc_sha3_256_update(&context, rsapss_h, digestlen);
+		isc_sha3_256_update(&context, rsapss_mgf_c1, 4);
+		isc_sha3_256_final(rsapss_dbmask + digestlen, &context);
+		break;
+	}
+
+	case DST_ALG_RSASHA3_384: {
+		isc_sha3_384_t context;
+
+		isc_sha3_384_init(&context);
+		isc_sha3_384_update(&context, rsapss_h, digestlen);
+		isc_sha3_384_update(&context, rsapss_mgf_c0, 4);
+		isc_sha3_384_final(rsapss_dbmask, &context);
+
+		isc_sha3_384_init(&context);
+		isc_sha3_384_update(&context, rsapss_h, digestlen);
+		isc_sha3_384_update(&context, rsapss_mgf_c1, 4);
+		isc_sha3_384_final(rsapss_dbmask + digestlen, &context);
+		break;
+	}
+
+	case DST_ALG_RSASHA3_512: {
+		isc_sha3_512_t context;
+
+		isc_sha3_512_init(&context);
+		isc_sha3_512_update(&context, rsapss_h, digestlen);
+		isc_sha3_512_update(&context, rsapss_mgf_c0, 4);
+		isc_sha3_512_final(rsapss_dbmask, &context);
+
+		isc_sha3_512_init(&context);
+		isc_sha3_512_update(&context, rsapss_h, digestlen);
+		isc_sha3_512_update(&context, rsapss_mgf_c1, 4);
+		isc_sha3_512_final(rsapss_dbmask + digestlen, &context);
+		break;
+	}
+
+	default:
+		INSIST(0);
+	}
+
+	for (i = 0; i < digestlen + 1; i++)
+		rsapss_maskeddb[i] = rsapss_db[i] ^ rsapss_dbmask[i];
+
+	rsapss_maskeddb[0] &= 0x01;
+
+	memmove(rsapss_em, rsapss_maskeddb, digestlen + 1);
+	memmove(rsapss_em + digestlen + 1, rsapss_h, digestlen);
+	rsapss_em[2 * digestlen + 1] = 0xbc;
+}
+
+static isc_boolean_t
+emsa_pss_verify(unsigned int key_alg,
+		const unsigned char *digest, unsigned int digestlen,
+		unsigned char *rsapss_em, unsigned int rsapss_emlen)
+{
+	unsigned char rsapss_salt[ISC_SHA512_DIGESTLENGTH];
+	unsigned char rsapss_mp[2 * ISC_SHA512_DIGESTLENGTH + 8];
+	unsigned char rsapss_h[ISC_SHA512_DIGESTLENGTH];
+	unsigned char rsapss_hp[ISC_SHA512_DIGESTLENGTH];
+	unsigned char rsapss_db[ISC_SHA512_DIGESTLENGTH + 1];
+	unsigned char rsapss_mgf_c0[4] = { 0x00, 0x00, 0x00, 0x00 };
+	unsigned char rsapss_mgf_c1[4] = { 0x00, 0x00, 0x00, 0x01 };
+	unsigned char rsapss_dbmask[2 * ISC_SHA512_DIGESTLENGTH];
+	unsigned char rsapss_maskeddb[ISC_SHA512_DIGESTLENGTH + 1];
+	unsigned int i;
+
+	if (rsapss_emlen < (2 * digestlen + 2))
+		return (ISC_FALSE);
+
+	if (rsapss_em[2 * digestlen + 1] != 0xbc)
+		return (ISC_FALSE);
+
+	memmove(rsapss_maskeddb, rsapss_em, digestlen + 1);
+	memmove(rsapss_h, rsapss_em + digestlen + 1, digestlen);
+
+	if ((rsapss_maskeddb[0] & 0xfe) != 0)
+		return (ISC_FALSE);
+
+	switch (key_alg) {
+	case DST_ALG_RSASHA3_256: {
+		isc_sha3_256_t context;
+
+		isc_sha3_256_init(&context);
+		isc_sha3_256_update(&context, rsapss_h, digestlen);
+		isc_sha3_256_update(&context, rsapss_mgf_c0, 4);
+		isc_sha3_256_final(rsapss_dbmask, &context);
+
+		isc_sha3_256_init(&context);
+		isc_sha3_256_update(&context, rsapss_h, digestlen);
+		isc_sha3_256_update(&context, rsapss_mgf_c1, 4);
+		isc_sha3_256_final(rsapss_dbmask + digestlen, &context);
+		break;
+	}
+
+	case DST_ALG_RSASHA3_384: {
+		isc_sha3_384_t context;
+
+		isc_sha3_384_init(&context);
+		isc_sha3_384_update(&context, rsapss_h, digestlen);
+		isc_sha3_384_update(&context, rsapss_mgf_c0, 4);
+		isc_sha3_384_final(rsapss_dbmask, &context);
+
+		isc_sha3_384_init(&context);
+		isc_sha3_384_update(&context, rsapss_h, digestlen);
+		isc_sha3_384_update(&context, rsapss_mgf_c1, 4);
+		isc_sha3_384_final(rsapss_dbmask + digestlen, &context);
+		break;
+	}
+
+	case DST_ALG_RSASHA3_512: {
+		isc_sha3_512_t context;
+
+		isc_sha3_512_init(&context);
+		isc_sha3_512_update(&context, rsapss_h, digestlen);
+		isc_sha3_512_update(&context, rsapss_mgf_c0, 4);
+		isc_sha3_512_final(rsapss_dbmask, &context);
+
+		isc_sha3_512_init(&context);
+		isc_sha3_512_update(&context, rsapss_h, digestlen);
+		isc_sha3_512_update(&context, rsapss_mgf_c1, 4);
+		isc_sha3_512_final(rsapss_dbmask + digestlen, &context);
+		break;
+	}
+
+	default:
+		INSIST(0);
+	}
+
+	for (i = 0; i < digestlen + 1; i++)
+		rsapss_db[i] = rsapss_maskeddb[i] ^ rsapss_dbmask[i];
+
+	rsapss_db[0] &= 0x01;
+
+	if (rsapss_db[0] != 0x01)
+		return (ISC_FALSE);
+
+	memmove(rsapss_salt, rsapss_db + 1, digestlen);
+
+	memset(rsapss_mp, 0, 8);
+	memmove(rsapss_mp + 8, digest, digestlen);
+	memmove(rsapss_mp + 8 + digestlen, rsapss_salt, digestlen);
+
+	switch (key_alg) {
+	case DST_ALG_RSASHA3_256: {
+		isc_sha3_256_t context;
+
+		isc_sha3_256_init(&context);
+		isc_sha3_256_update(&context, rsapss_mp, 2 * digestlen + 8);
+		isc_sha3_256_final(rsapss_hp, &context);
+		INSIST(digestlen == ISC_SHA3_256_DIGESTLENGTH);
+		break;
+	}
+
+	case DST_ALG_RSASHA3_384: {
+		isc_sha3_384_t context;
+
+		isc_sha3_384_init(&context);
+		isc_sha3_384_update(&context, rsapss_mp, 2 * digestlen + 8);
+		isc_sha3_384_final(rsapss_hp, &context);
+		INSIST(digestlen == ISC_SHA3_384_DIGESTLENGTH);
+		break;
+	}
+
+	case DST_ALG_RSASHA3_512: {
+		isc_sha3_512_t context;
+
+		isc_sha3_512_init(&context);
+		isc_sha3_512_update(&context, rsapss_mp, 2 * digestlen + 8);
+		isc_sha3_512_final(rsapss_hp, &context);
+		INSIST(digestlen == ISC_SHA3_512_DIGESTLENGTH);
+		break;
+	}
+
+	default:
+		INSIST(0);
+	}
+
+	if (memcmp(rsapss_h, rsapss_hp, digestlen) != 0)
+		return (ISC_FALSE);
+
+	return (ISC_TRUE);
+}
 
 static isc_result_t
 opensslrsa_sign(dst_context_t *dctx, isc_buffer_t *sig) {
@@ -655,10 +899,10 @@ opensslrsa_sign(dst_context_t *dctx, isc_buffer_t *sig) {
 	int status;
 	int type = 0;
 	unsigned int digestlen = 0;
-/* #if OPENSSL_VERSION_NUMBER < 0x00908000L */
+#if OPENSSL_VERSION_NUMBER < 0x00908000L
 	unsigned int prefixlen = 0;
 	const unsigned char *prefix = NULL;
-/* #endif */
+#endif
 #endif
 
 #ifndef PK11_MD5_DISABLE
@@ -751,8 +995,6 @@ opensslrsa_sign(dst_context_t *dctx, isc_buffer_t *sig) {
 
 			isc_sha3_256_final(digest, sha3_256ctx);
 			digestlen = ISC_SHA3_256_DIGESTLENGTH;
-			prefix = sha3_256_prefix;
-			prefixlen = sizeof(sha3_256_prefix);
 		}
 		break;
 	case DST_ALG_RSASHA3_384:
@@ -761,8 +1003,6 @@ opensslrsa_sign(dst_context_t *dctx, isc_buffer_t *sig) {
 
 			isc_sha3_384_final(digest, sha3_384ctx);
 			digestlen = ISC_SHA3_384_DIGESTLENGTH;
-			prefix = sha3_384_prefix;
-			prefixlen = sizeof(sha3_384_prefix);
 		}
 		break;
 	case DST_ALG_RSASHA3_512:
@@ -771,8 +1011,6 @@ opensslrsa_sign(dst_context_t *dctx, isc_buffer_t *sig) {
 
 			isc_sha3_512_final(digest, sha3_512ctx);
 			digestlen = ISC_SHA3_512_DIGESTLENGTH;
-			prefix = sha3_512_prefix;
-			prefixlen = sizeof(sha3_512_prefix);
 		}
 		break;
 	default:
@@ -793,9 +1031,6 @@ opensslrsa_sign(dst_context_t *dctx, isc_buffer_t *sig) {
 
 	case DST_ALG_RSASHA256:
 	case DST_ALG_RSASHA512:
-	case DST_ALG_RSASHA3_256:
-	case DST_ALG_RSASHA3_384:
-	case DST_ALG_RSASHA3_512:
 		INSIST(prefix != NULL);
 		INSIST(prefixlen != 0);
 		INSIST(prefixlen + digestlen <= sizeof(digest));
@@ -810,6 +1045,24 @@ opensslrsa_sign(dst_context_t *dctx, isc_buffer_t *sig) {
 		else
 			siglen = status;
 		break;
+
+	case DST_ALG_RSASHA3_256:
+	case DST_ALG_RSASHA3_384:
+	case DST_ALG_RSASHA3_512: {
+		unsigned char rsapss_em[2 * ISC_SHA512_DIGESTLENGTH + 2];
+
+		emsa_pss_sign(dctx->key->key_alg, digest, digestlen,
+			      rsapss_em);
+
+		status = RSA_private_encrypt(2 * digestlen + 2,
+					     rsapss_em, r.base, rsa,
+					     RSA_PKCS1_PADDING);
+		if (status < 0)
+			status = 0;
+		else
+			siglen = status;
+		break;
+	}
 
 	default:
 		INSIST(0);
@@ -818,21 +1071,21 @@ opensslrsa_sign(dst_context_t *dctx, isc_buffer_t *sig) {
 	switch (dctx->key->key_alg) {
 	case DST_ALG_RSASHA3_256:
 	case DST_ALG_RSASHA3_384:
-	case DST_ALG_RSASHA3_512:
-		INSIST(prefix != NULL);
-		INSIST(prefixlen != 0);
-		INSIST(prefixlen + digestlen <= sizeof(digest));
+	case DST_ALG_RSASHA3_512: {
+		unsigned char rsapss_em[2 * ISC_SHA512_DIGESTLENGTH + 2];
 
-		memmove(digest + prefixlen, digest, digestlen);
-		memmove(digest, prefix, prefixlen);
-		status = RSA_private_encrypt(digestlen + prefixlen,
-					     digest, r.base, rsa,
+		emsa_pss_sign(dctx->key->key_alg, digest, digestlen,
+			      rsapss_em);
+
+		status = RSA_private_encrypt(2 * digestlen + 2,
+					     rsapss_em, r.base, rsa,
 					     RSA_PKCS1_PADDING);
 		if (status < 0)
 			status = 0;
 		else
 			siglen = status;
 		break;
+	}
 
 	default:
 		INSIST(type != 0);
@@ -866,10 +1119,10 @@ opensslrsa_verify2(dst_context_t *dctx, int maxbits, const isc_region_t *sig) {
 	int type = 0;
 	unsigned int digestlen = 0;
 	RSA *rsa = key->keydata.rsa;
-/* #if OPENSSL_VERSION_NUMBER < 0x00908000L */
+#if OPENSSL_VERSION_NUMBER < 0x00908000L
 	unsigned int prefixlen = 0;
 	const unsigned char *prefix = NULL;
-/* #endif */
+#endif
 #endif
 
 #ifndef PK11_MD5_DISABLE
@@ -973,8 +1226,6 @@ opensslrsa_verify2(dst_context_t *dctx, int maxbits, const isc_region_t *sig) {
 
 			isc_sha3_256_final(digest, sha3_256ctx);
 			digestlen = ISC_SHA3_256_DIGESTLENGTH;
-			prefix = sha3_256_prefix;
-			prefixlen = sizeof(sha3_256_prefix);
 		}
 		break;
 	case DST_ALG_RSASHA3_384:
@@ -983,8 +1234,6 @@ opensslrsa_verify2(dst_context_t *dctx, int maxbits, const isc_region_t *sig) {
 
 			isc_sha3_384_final(digest, sha3_384ctx);
 			digestlen = ISC_SHA3_384_DIGESTLENGTH;
-			prefix = sha3_384_prefix;
-			prefixlen = sizeof(sha3_384_prefix);
 		}
 		break;
 	case DST_ALG_RSASHA3_512:
@@ -993,8 +1242,6 @@ opensslrsa_verify2(dst_context_t *dctx, int maxbits, const isc_region_t *sig) {
 
 			isc_sha3_512_final(digest, sha3_512ctx);
 			digestlen = ISC_SHA3_512_DIGESTLENGTH;
-			prefix = sha3_512_prefix;
-			prefixlen = sizeof(sha3_512_prefix);
 		}
 		break;
 	default:
@@ -1018,9 +1265,6 @@ opensslrsa_verify2(dst_context_t *dctx, int maxbits, const isc_region_t *sig) {
 
 	case DST_ALG_RSASHA256:
 	case DST_ALG_RSASHA512:
-	case DST_ALG_RSASHA3_256:
-	case DST_ALG_RSASHA3_384:
-	case DST_ALG_RSASHA3_512:
 		{
 			/*
 			 * 1024 is big enough for all valid RSA bit sizes
@@ -1053,6 +1297,36 @@ opensslrsa_verify2(dst_context_t *dctx, int maxbits, const isc_region_t *sig) {
 		}
 		break;
 
+	case DST_ALG_RSASHA3_256:
+	case DST_ALG_RSASHA3_384:
+	case DST_ALG_RSASHA3_512: {
+		/*
+		 * 1024 is big enough for all valid RSA bit sizes for
+		 * use with DNSSEC.
+		 */
+		unsigned char original[PREFIXLEN + 1024];
+
+		if (RSA_size(rsa) > (int)sizeof(original))
+			return (DST_R_VERIFYFAILURE);
+
+		status = RSA_public_decrypt(sig->length, sig->base,
+					    original, rsa,
+					    RSA_PKCS1_PADDING);
+		if (status <= 0)
+			return (dst__openssl_toresult3(
+					dctx->category,
+					"RSA_public_decrypt",
+					DST_R_VERIFYFAILURE));
+
+		if (!emsa_pss_verify(dctx->key->key_alg,
+				     digest, digestlen,
+				     original, status))
+			return (DST_R_VERIFYFAILURE);
+
+		status = 1;
+	        break;
+	}
+
 	default:
 		INSIST(0);
 	}
@@ -1060,38 +1334,33 @@ opensslrsa_verify2(dst_context_t *dctx, int maxbits, const isc_region_t *sig) {
 	switch (dctx->key->key_alg) {
 	case DST_ALG_RSASHA3_256:
 	case DST_ALG_RSASHA3_384:
-	case DST_ALG_RSASHA3_512:
-		{
-			/*
-			 * 1024 is big enough for all valid RSA bit sizes
-			 * for use with DNSSEC.
-			 */
-			unsigned char original[PREFIXLEN + 1024];
+	case DST_ALG_RSASHA3_512: {
+		/*
+		 * 1024 is big enough for all valid RSA bit sizes for
+		 * use with DNSSEC.
+		 */
+		unsigned char original[PREFIXLEN + 1024];
 
-			INSIST(prefix != NULL);
-			INSIST(prefixlen != 0U);
+		if (RSA_size(rsa) > (int)sizeof(original))
+			return (DST_R_VERIFYFAILURE);
 
-			if (RSA_size(rsa) > (int)sizeof(original))
-				return (DST_R_VERIFYFAILURE);
+		status = RSA_public_decrypt(sig->length, sig->base,
+					    original, rsa,
+					    RSA_PKCS1_PADDING);
+		if (status <= 0)
+			return (dst__openssl_toresult3(
+					dctx->category,
+					"RSA_public_decrypt",
+					DST_R_VERIFYFAILURE));
 
-			status = RSA_public_decrypt(sig->length, sig->base,
-						    original, rsa,
-						    RSA_PKCS1_PADDING);
-			if (status <= 0)
-				return (dst__openssl_toresult3(
-						dctx->category,
-						"RSA_public_decrypt",
-						DST_R_VERIFYFAILURE));
-			if (status != (int)(prefixlen + digestlen))
-				return (DST_R_VERIFYFAILURE);
-			if (!isc_safe_memequal(original, prefix, prefixlen))
-				return (DST_R_VERIFYFAILURE);
-			if (!isc_safe_memequal(original + prefixlen,
-					    digest, digestlen))
-				return (DST_R_VERIFYFAILURE);
-			status = 1;
-		}
+		if (!emsa_pss_verify(dctx->key->key_alg,
+				     digest, digestlen,
+				     original, status))
+			return (DST_R_VERIFYFAILURE);
+
+		status = 1;
 	        break;
+	}
 
 	default:
 	        INSIST(type != 0);

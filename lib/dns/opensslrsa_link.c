@@ -632,9 +632,9 @@ static unsigned char sha512_prefix[] =
 #endif
 
 static void
-emsa_pss_sign(unsigned int key_alg,
-	      const unsigned char *digest, unsigned int digestlen,
-	      unsigned char *rsapss_em)
+emsa_pss_encode(unsigned int key_alg,
+		const unsigned char *digest, unsigned int digestlen,
+		unsigned char *rsapss_em)
 {
 	unsigned char rsapss_salt[ISC_SHA512_DIGESTLENGTH];
 	unsigned char rsapss_mp[2 * ISC_SHA512_DIGESTLENGTH + 8];
@@ -646,13 +646,37 @@ emsa_pss_sign(unsigned int key_alg,
 	unsigned char rsapss_maskeddb[ISC_SHA512_DIGESTLENGTH + 1];
 	unsigned int i;
 
-	/* XXXMUKS: generate a random salt of digestlen here */
+	/*
+	 * This is an implementation of EMSA-PSS-ENCODE() from RFC 8017
+	 * section 9.1.1. The salt length is the same as digestlen.
+	 *
+	 * The function argument "digest" contains mHash result from
+	 * step 2.
+	 */
+
+	/*
+	 * 4. Generate a random octet string salt of length sLen; if
+	 * sLen = 0, then salt is the empty string.
+	 *
+	 * XXXMUKS: generate a random salt of digestlen here
+	 */
 	memset(rsapss_salt, 0, digestlen);
 
+	/*
+	 * 5. Let
+	 *
+	 * M' = (0x)00 00 00 00 00 00 00 00 || mHash || salt;
+	 *
+	 * M' is an octet string of length 8 + hLen + sLen with eight
+	 * initial zero octets.
+	 */
 	memset(rsapss_mp, 0, 8);
 	memmove(rsapss_mp + 8, digest, digestlen);
 	memmove(rsapss_mp + 8 + digestlen, rsapss_salt, digestlen);
 
+	/*
+	 * 6. Let H = Hash(M'), an octet string of length hLen.
+	 */
 	switch (key_alg) {
 	case DST_ALG_RSASHA3_256: {
 		isc_sha3_256_t context;
@@ -688,9 +712,19 @@ emsa_pss_sign(unsigned int key_alg,
 		INSIST(0);
 	}
 
+	/*
+	 * 8. Let DB = PS || 0x01 || salt; DB is an octet string of
+	 * length emLen - hLen - 1.
+	 *
+	 * Here, PS is of length 0, and (emLen - hLen - 1) is digestlen.
+	 */
 	rsapss_db[0] = 0x01;
 	memmove(rsapss_db + 1, rsapss_salt, digestlen);
 
+	/*
+	 * 9. Let dbMask = MGF(H, emLen - hLen - 1).
+	 * (emLen - hLen - 1) is digestlen.
+	 */
 	switch (key_alg) {
 	case DST_ALG_RSASHA3_256: {
 		isc_sha3_256_t context;
@@ -741,11 +775,21 @@ emsa_pss_sign(unsigned int key_alg,
 		INSIST(0);
 	}
 
+	/*
+	 * 10. Let maskedDB = DB \xor dbMask.
+	 */
 	for (i = 0; i < digestlen + 1; i++)
 		rsapss_maskeddb[i] = rsapss_db[i] ^ rsapss_dbmask[i];
 
+	/*
+	 * 11. Set the leftmost 8emLen - emBits bits of the leftmost
+	 * octet in maskedDB to zero.
+	 */
 	rsapss_maskeddb[0] &= 0x01;
 
+	/*
+	 * 12. Let EM = maskedDB || H || 0xbc.
+	 */
 	memmove(rsapss_em, rsapss_maskeddb, digestlen + 1);
 	memmove(rsapss_em + digestlen + 1, rsapss_h, digestlen);
 	rsapss_em[2 * digestlen + 1] = 0xbc;
@@ -767,18 +811,46 @@ emsa_pss_verify(unsigned int key_alg,
 	unsigned char rsapss_maskeddb[ISC_SHA512_DIGESTLENGTH + 1];
 	unsigned int i;
 
+	/*
+	 * This is an implementation of EMSA-PSS-VERIFY() from RFC 8017
+	 * section 9.1.2.
+	 *
+	 * The function argument "digest" contains mHash result from
+	 * step 2.
+	 */
+
+	/*
+	 * 3. If emLen < hLen + sLen + 2, output "inconsistent" and
+	 * stop.
+	 */
 	if (rsapss_emlen < (2 * digestlen + 2))
 		return (ISC_FALSE);
 
+	/*
+	 * 4. If the rightmost octet of EM does not have hexadecimal
+	 * value 0xbc, output "inconsistent" and stop.
+	 */
 	if (rsapss_em[2 * digestlen + 1] != 0xbc)
 		return (ISC_FALSE);
 
+	/*
+	 * 5. Let maskedDB be the leftmost emLen - hLen - 1 octets of
+	 * EM, and let H be the next hLen octets.
+	 */
 	memmove(rsapss_maskeddb, rsapss_em, digestlen + 1);
 	memmove(rsapss_h, rsapss_em + digestlen + 1, digestlen);
 
+	/*
+	 * 6. If the leftmost 8emLen - emBits bits of the leftmost octet
+	 * in maskedDB are not all equal to zero, output "inconsistent"
+	 * and stop.
+	 */
 	if ((rsapss_maskeddb[0] & 0xfe) != 0)
 		return (ISC_FALSE);
 
+	/*
+	 * 7. Let dbMask = MGF(H, emLen - hLen - 1).
+	 */
 	switch (key_alg) {
 	case DST_ALG_RSASHA3_256: {
 		isc_sha3_256_t context;
@@ -829,20 +901,47 @@ emsa_pss_verify(unsigned int key_alg,
 		INSIST(0);
 	}
 
+	/*
+	 * 8. Let DB = maskedDB \xor dbMask.
+	 */
 	for (i = 0; i < digestlen + 1; i++)
 		rsapss_db[i] = rsapss_maskeddb[i] ^ rsapss_dbmask[i];
 
+	/*
+	 * 9. Set the leftmost 8emLen - emBits bits of the leftmost
+	 * octet in DB to zero.
+	 */
 	rsapss_db[0] &= 0x01;
 
+	/*
+	 * 10. If the emLen - hLen - sLen - 2 leftmost octets of DB are
+	 * not zero or if the octet at position emLen - hLen - sLen - 1
+	 * (the leftmost position is "position 1") does not have
+	 * hexadecimal value 0x01, output "inconsistent" and stop.
+	 */
 	if (rsapss_db[0] != 0x01)
 		return (ISC_FALSE);
 
+	/*
+	 * 11. Let salt be the last sLen octets of DB.
+	 */
 	memmove(rsapss_salt, rsapss_db + 1, digestlen);
 
+	/*
+	 * 12. Let
+	 *
+	 * M' = (0x)00 00 00 00 00 00 00 00 || mHash || salt ;
+	 *
+	 * M' is an octet string of length 8 + hLen + sLen with eight
+	 * initial zero octets.
+	 */
 	memset(rsapss_mp, 0, 8);
 	memmove(rsapss_mp + 8, digest, digestlen);
 	memmove(rsapss_mp + 8 + digestlen, rsapss_salt, digestlen);
 
+	/*
+	 * 13. Let H' = Hash(M'), an octet string of length hLen.
+	 */
 	switch (key_alg) {
 	case DST_ALG_RSASHA3_256: {
 		isc_sha3_256_t context;
@@ -878,6 +977,10 @@ emsa_pss_verify(unsigned int key_alg,
 		INSIST(0);
 	}
 
+	/*
+	 * 14. If H = H', output "consistent".	Otherwise, output
+	 * "inconsistent".
+	 */
 	if (memcmp(rsapss_h, rsapss_hp, digestlen) != 0)
 		return (ISC_FALSE);
 
@@ -1051,8 +1154,8 @@ opensslrsa_sign(dst_context_t *dctx, isc_buffer_t *sig) {
 	case DST_ALG_RSASHA3_512: {
 		unsigned char rsapss_em[2 * ISC_SHA512_DIGESTLENGTH + 2];
 
-		emsa_pss_sign(dctx->key->key_alg, digest, digestlen,
-			      rsapss_em);
+		emsa_pss_encode(dctx->key->key_alg, digest, digestlen,
+				rsapss_em);
 
 		status = RSA_private_encrypt(2 * digestlen + 2,
 					     rsapss_em, r.base, rsa,
@@ -1074,8 +1177,8 @@ opensslrsa_sign(dst_context_t *dctx, isc_buffer_t *sig) {
 	case DST_ALG_RSASHA3_512: {
 		unsigned char rsapss_em[2 * ISC_SHA512_DIGESTLENGTH + 2];
 
-		emsa_pss_sign(dctx->key->key_alg, digest, digestlen,
-			      rsapss_em);
+		emsa_pss_encode(dctx->key->key_alg, digest, digestlen,
+				rsapss_em);
 
 		status = RSA_private_encrypt(2 * digestlen + 2,
 					     rsapss_em, r.base, rsa,

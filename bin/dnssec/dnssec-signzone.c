@@ -2912,6 +2912,8 @@ writeset(const char *prefix, dns_rdatatype_t type) {
 			result = dns_difftuple_create(mctx,
 						      DNS_DIFFOP_ADDRESIGN,
 						      name, 0, &ds, &tuple);
+			check_result(result, "dns_difftuple_create");
+			dns_diff_append(&diff, &tuple);
 
 			dns_rdata_reset(&ds);
 			result = dns_ds_buildrdata(gorigin, &rdata,
@@ -2923,6 +2925,8 @@ writeset(const char *prefix, dns_rdatatype_t type) {
 			result = dns_difftuple_create(mctx,
 						      DNS_DIFFOP_ADDRESIGN,
 						      name, 0, &ds, &tuple);
+			check_result(result, "dns_difftuple_create");
+			dns_diff_append(&diff, &tuple);
 
 			dns_rdata_reset(&ds);
 			result = dns_ds_buildrdata(gorigin, &rdata,

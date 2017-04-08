@@ -706,19 +706,104 @@ static unsigned char sha512_prefix[] =
 #endif
 
 static void
-emsa_pss_encode(unsigned int key_alg,
-		const unsigned char *digest, unsigned int digestlen,
-		unsigned char *rsapss_em)
+emsa_pss_mgf(unsigned int key_alg, const unsigned char *rsapss_mgfseed,
+	     unsigned int rsapss_masklen, unsigned int digestlen,
+	     unsigned char *rsapss_dbmask)
 {
+	unsigned int c, t;
+
+	t = 0;
+	c = 0;
+
+	while (t < rsapss_masklen) {
+		isc_uint8_t rsapss_mgf_c[4];
+
+		rsapss_mgf_c[0] = (c >> 24) & 0xff;
+		rsapss_mgf_c[1] = (c >> 16) & 0xff;
+		rsapss_mgf_c[2] = (c >> 8) & 0xff;
+		rsapss_mgf_c[3] = c & 0xff;
+
+		switch (key_alg) {
+		case DST_ALG_RSASHA2_256: {
+			isc_sha256_t context;
+
+			isc_sha256_init(&context);
+			isc_sha256_update(&context, rsapss_mgfseed, digestlen);
+			isc_sha256_update(&context, rsapss_mgf_c, 4);
+			isc_sha256_final(rsapss_dbmask + t, &context);
+
+			break;
+		}
+
+		case DST_ALG_RSASHA2_512: {
+			isc_sha512_t context;
+
+			isc_sha512_init(&context);
+			isc_sha512_update(&context, rsapss_mgfseed, digestlen);
+			isc_sha512_update(&context, rsapss_mgf_c, 4);
+			isc_sha512_final(rsapss_dbmask + t, &context);
+
+			break;
+		}
+
+		case DST_ALG_RSASHA3_256: {
+			isc_sha3_256_t context;
+
+			isc_sha3_256_init(&context);
+			isc_sha3_256_update(&context, rsapss_mgfseed, digestlen);
+			isc_sha3_256_update(&context, rsapss_mgf_c, 4);
+			isc_sha3_256_final(rsapss_dbmask + t, &context);
+
+			break;
+		}
+
+		case DST_ALG_RSASHA3_384: {
+			isc_sha3_384_t context;
+
+			isc_sha3_384_init(&context);
+			isc_sha3_384_update(&context, rsapss_mgfseed, digestlen);
+			isc_sha3_384_update(&context, rsapss_mgf_c, 4);
+			isc_sha3_384_final(rsapss_dbmask + t, &context);
+
+			break;
+		}
+
+		case DST_ALG_RSASHA3_512: {
+			isc_sha3_512_t context;
+
+			isc_sha3_512_init(&context);
+			isc_sha3_512_update(&context, rsapss_mgfseed, digestlen);
+			isc_sha3_512_update(&context, rsapss_mgf_c, 4);
+			isc_sha3_512_final(rsapss_dbmask + t, &context);
+
+			break;
+		}
+
+		default:
+			INSIST(0);
+		}
+
+		t += digestlen;
+		c++;
+	}
+}
+
+static isc_result_t
+emsa_pss_encode(unsigned int key_alg, unsigned int rsapss_embits,
+		const unsigned char *digest, unsigned int digestlen,
+		unsigned char *rsapss_em, unsigned int *rsapss_emlen_out)
+{
+	unsigned int rsapss_emlen;
 	unsigned char rsapss_salt[ISC_SHA512_DIGESTLENGTH];
 	unsigned char rsapss_mp[2 * ISC_SHA512_DIGESTLENGTH + 8];
 	unsigned char rsapss_h[ISC_SHA512_DIGESTLENGTH];
-	unsigned char rsapss_db[ISC_SHA512_DIGESTLENGTH + 1];
-	unsigned char rsapss_mgf_c0[4] = { 0x00, 0x00, 0x00, 0x00 };
-	unsigned char rsapss_mgf_c1[4] = { 0x00, 0x00, 0x00, 0x01 };
-	unsigned char rsapss_dbmask[2 * ISC_SHA512_DIGESTLENGTH];
-	unsigned char rsapss_maskeddb[ISC_SHA512_DIGESTLENGTH + 1];
+	unsigned int rsapss_pslen;
+	unsigned char rsapss_db[4096/8];
+	unsigned int rsapss_dblen;
+	unsigned char rsapss_dbmask[4096/8];
+	unsigned char rsapss_maskeddb[4096/8];
 	unsigned int i;
+	unsigned int bits, bitmask;
 
 	/*
 	 * This is an implementation of EMSA-PSS-ENCODE() from RFC 8017
@@ -727,6 +812,15 @@ emsa_pss_encode(unsigned int key_alg,
 	 * The function argument "digest" contains mHash result from
 	 * step 2.
 	 */
+
+	rsapss_emlen = (rsapss_embits + 7U) / 8U;
+
+	/*
+	 * 3. If emLen < hLen + sLen + 2, output "encoding error" and
+	 * stop.
+	 */
+	if (rsapss_emlen < (2 * digestlen + 2))
+		return (DST_R_SIGNFAILURE);
 
 	/*
 	 * 4. Generate a random octet string salt of length sLen; if
@@ -807,133 +901,70 @@ emsa_pss_encode(unsigned int key_alg,
 	}
 
 	/*
+	 *
+	 * 7. Generate an octet string PS consisting of emLen - sLen - hLen
+	 *  - 2 zero octets.  The length of PS may be 0.
+	 *
 	 * 8. Let DB = PS || 0x01 || salt; DB is an octet string of
 	 * length emLen - hLen - 1.
-	 *
-	 * Here, PS is of length 0, and (emLen - hLen - 1) is digestlen.
 	 */
-	rsapss_db[0] = 0x01;
-	memmove(rsapss_db + 1, rsapss_salt, digestlen);
+	rsapss_pslen = rsapss_emlen - digestlen - digestlen - 2;
+
+	memset(rsapss_db, 0, rsapss_pslen);
+	rsapss_db[rsapss_pslen] = 0x01;
+	memmove(rsapss_db + rsapss_pslen + 1, rsapss_salt, digestlen);
+
+	rsapss_dblen = rsapss_emlen - digestlen - 1;
 
 	/*
 	 * 9. Let dbMask = MGF(H, emLen - hLen - 1).
-	 * (emLen - hLen - 1) is digestlen.
 	 */
-	switch (key_alg) {
-	case DST_ALG_RSASHA2_256: {
-		isc_sha256_t context;
-
-		isc_sha256_init(&context);
-		isc_sha256_update(&context, rsapss_h, digestlen);
-		isc_sha256_update(&context, rsapss_mgf_c0, 4);
-		isc_sha256_final(rsapss_dbmask, &context);
-
-		isc_sha256_init(&context);
-		isc_sha256_update(&context, rsapss_h, digestlen);
-		isc_sha256_update(&context, rsapss_mgf_c1, 4);
-		isc_sha256_final(rsapss_dbmask + digestlen, &context);
-		break;
-	}
-
-	case DST_ALG_RSASHA2_512: {
-		isc_sha512_t context;
-
-		isc_sha512_init(&context);
-		isc_sha512_update(&context, rsapss_h, digestlen);
-		isc_sha512_update(&context, rsapss_mgf_c0, 4);
-		isc_sha512_final(rsapss_dbmask, &context);
-
-		isc_sha512_init(&context);
-		isc_sha512_update(&context, rsapss_h, digestlen);
-		isc_sha512_update(&context, rsapss_mgf_c1, 4);
-		isc_sha512_final(rsapss_dbmask + digestlen, &context);
-		break;
-	}
-
-	case DST_ALG_RSASHA3_256: {
-		isc_sha3_256_t context;
-
-		isc_sha3_256_init(&context);
-		isc_sha3_256_update(&context, rsapss_h, digestlen);
-		isc_sha3_256_update(&context, rsapss_mgf_c0, 4);
-		isc_sha3_256_final(rsapss_dbmask, &context);
-
-		isc_sha3_256_init(&context);
-		isc_sha3_256_update(&context, rsapss_h, digestlen);
-		isc_sha3_256_update(&context, rsapss_mgf_c1, 4);
-		isc_sha3_256_final(rsapss_dbmask + digestlen, &context);
-		break;
-	}
-
-	case DST_ALG_RSASHA3_384: {
-		isc_sha3_384_t context;
-
-		isc_sha3_384_init(&context);
-		isc_sha3_384_update(&context, rsapss_h, digestlen);
-		isc_sha3_384_update(&context, rsapss_mgf_c0, 4);
-		isc_sha3_384_final(rsapss_dbmask, &context);
-
-		isc_sha3_384_init(&context);
-		isc_sha3_384_update(&context, rsapss_h, digestlen);
-		isc_sha3_384_update(&context, rsapss_mgf_c1, 4);
-		isc_sha3_384_final(rsapss_dbmask + digestlen, &context);
-		break;
-	}
-
-	case DST_ALG_RSASHA3_512: {
-		isc_sha3_512_t context;
-
-		isc_sha3_512_init(&context);
-		isc_sha3_512_update(&context, rsapss_h, digestlen);
-		isc_sha3_512_update(&context, rsapss_mgf_c0, 4);
-		isc_sha3_512_final(rsapss_dbmask, &context);
-
-		isc_sha3_512_init(&context);
-		isc_sha3_512_update(&context, rsapss_h, digestlen);
-		isc_sha3_512_update(&context, rsapss_mgf_c1, 4);
-		isc_sha3_512_final(rsapss_dbmask + digestlen, &context);
-		break;
-	}
-
-	default:
-		INSIST(0);
-	}
+	emsa_pss_mgf(key_alg, rsapss_h, rsapss_dblen, digestlen,
+		     rsapss_dbmask);
 
 	/*
 	 * 10. Let maskedDB = DB \xor dbMask.
 	 */
-	for (i = 0; i < digestlen + 1; i++)
+	for (i = 0; i < rsapss_dblen; i++)
 		rsapss_maskeddb[i] = rsapss_db[i] ^ rsapss_dbmask[i];
 
 	/*
 	 * 11. Set the leftmost 8emLen - emBits bits of the leftmost
 	 * octet in maskedDB to zero.
 	 */
-	rsapss_maskeddb[0] &= 0x01;
+	bits = (8U * rsapss_emlen) - rsapss_embits;
+	bitmask = (1U << (8U - bits)) - 1U;
+	rsapss_maskeddb[0] &= bitmask;
 
 	/*
 	 * 12. Let EM = maskedDB || H || 0xbc.
 	 */
-	memmove(rsapss_em, rsapss_maskeddb, digestlen + 1);
-	memmove(rsapss_em + digestlen + 1, rsapss_h, digestlen);
-	rsapss_em[2 * digestlen + 1] = 0xbc;
+	memmove(rsapss_em, rsapss_maskeddb, rsapss_dblen);
+	memmove(rsapss_em + rsapss_dblen, rsapss_h, digestlen);
+	rsapss_em[rsapss_dblen + digestlen] = 0xbc;
+
+	*rsapss_emlen_out = rsapss_dblen + digestlen + 1;
+
+	return (ISC_R_SUCCESS);
 }
 
-static isc_boolean_t
-emsa_pss_verify(unsigned int key_alg,
+static isc_result_t
+emsa_pss_verify(unsigned int key_alg, unsigned int rsapss_embits,
 		const unsigned char *digest, unsigned int digestlen,
-		unsigned char *rsapss_em, unsigned int rsapss_emlen)
+		unsigned int rsapss_emsize, const unsigned char *rsapss_em)
 {
+	unsigned int rsapss_emlen;
 	unsigned char rsapss_salt[ISC_SHA512_DIGESTLENGTH];
 	unsigned char rsapss_mp[2 * ISC_SHA512_DIGESTLENGTH + 8];
 	unsigned char rsapss_h[ISC_SHA512_DIGESTLENGTH];
+	unsigned int rsapss_pslen;
 	unsigned char rsapss_hp[ISC_SHA512_DIGESTLENGTH];
-	unsigned char rsapss_db[ISC_SHA512_DIGESTLENGTH + 1];
-	unsigned char rsapss_mgf_c0[4] = { 0x00, 0x00, 0x00, 0x00 };
-	unsigned char rsapss_mgf_c1[4] = { 0x00, 0x00, 0x00, 0x01 };
-	unsigned char rsapss_dbmask[2 * ISC_SHA512_DIGESTLENGTH];
-	unsigned char rsapss_maskeddb[ISC_SHA512_DIGESTLENGTH + 1];
+	unsigned char rsapss_db[4096/8];
+	unsigned int rsapss_dblen;
+	unsigned char rsapss_dbmask[4096/8];
+	unsigned char rsapss_maskeddb[4096/8];
 	unsigned int i;
+	unsigned int bits, bitmask;
 
 	/*
 	 * This is an implementation of EMSA-PSS-VERIFY() from RFC 8017
@@ -943,129 +974,60 @@ emsa_pss_verify(unsigned int key_alg,
 	 * step 2.
 	 */
 
+	rsapss_emlen = (rsapss_embits + 7U) / 8U;
+	if (rsapss_emsize != rsapss_emlen)
+		return (DST_R_VERIFYFAILURE);
+
 	/*
 	 * 3. If emLen < hLen + sLen + 2, output "inconsistent" and
 	 * stop.
 	 */
 	if (rsapss_emlen < (2 * digestlen + 2))
-		return (ISC_FALSE);
+		return (DST_R_VERIFYFAILURE);
 
 	/*
 	 * 4. If the rightmost octet of EM does not have hexadecimal
 	 * value 0xbc, output "inconsistent" and stop.
 	 */
-	if (rsapss_em[2 * digestlen + 1] != 0xbc)
-		return (ISC_FALSE);
+	if (rsapss_em[rsapss_emlen - 1] != 0xbc)
+		return (DST_R_VERIFYFAILURE);
 
 	/*
 	 * 5. Let maskedDB be the leftmost emLen - hLen - 1 octets of
 	 * EM, and let H be the next hLen octets.
 	 */
-	memmove(rsapss_maskeddb, rsapss_em, digestlen + 1);
-	memmove(rsapss_h, rsapss_em + digestlen + 1, digestlen);
+	rsapss_dblen = rsapss_emlen - digestlen - 1;
+
+	memmove(rsapss_maskeddb, rsapss_em, rsapss_dblen);
+	memmove(rsapss_h, rsapss_em + rsapss_dblen, digestlen);
 
 	/*
 	 * 6. If the leftmost 8emLen - emBits bits of the leftmost octet
 	 * in maskedDB are not all equal to zero, output "inconsistent"
 	 * and stop.
 	 */
-	if ((rsapss_maskeddb[0] & 0xfe) != 0)
-		return (ISC_FALSE);
+	bits = (8U * rsapss_emlen) - rsapss_embits;
+	bitmask = (1U << (8U - bits)) - 1U;
+	if ((rsapss_maskeddb[0] & ~(bitmask)) != 0)
+		return (DST_R_VERIFYFAILURE);
 
 	/*
 	 * 7. Let dbMask = MGF(H, emLen - hLen - 1).
 	 */
-	switch (key_alg) {
-	case DST_ALG_RSASHA2_256: {
-		isc_sha256_t context;
-
-		isc_sha256_init(&context);
-		isc_sha256_update(&context, rsapss_h, digestlen);
-		isc_sha256_update(&context, rsapss_mgf_c0, 4);
-		isc_sha256_final(rsapss_dbmask, &context);
-
-		isc_sha256_init(&context);
-		isc_sha256_update(&context, rsapss_h, digestlen);
-		isc_sha256_update(&context, rsapss_mgf_c1, 4);
-		isc_sha256_final(rsapss_dbmask + digestlen, &context);
-		break;
-	}
-
-	case DST_ALG_RSASHA2_512: {
-		isc_sha512_t context;
-
-		isc_sha512_init(&context);
-		isc_sha512_update(&context, rsapss_h, digestlen);
-		isc_sha512_update(&context, rsapss_mgf_c0, 4);
-		isc_sha512_final(rsapss_dbmask, &context);
-
-		isc_sha512_init(&context);
-		isc_sha512_update(&context, rsapss_h, digestlen);
-		isc_sha512_update(&context, rsapss_mgf_c1, 4);
-		isc_sha512_final(rsapss_dbmask + digestlen, &context);
-		break;
-	}
-
-	case DST_ALG_RSASHA3_256: {
-		isc_sha3_256_t context;
-
-		isc_sha3_256_init(&context);
-		isc_sha3_256_update(&context, rsapss_h, digestlen);
-		isc_sha3_256_update(&context, rsapss_mgf_c0, 4);
-		isc_sha3_256_final(rsapss_dbmask, &context);
-
-		isc_sha3_256_init(&context);
-		isc_sha3_256_update(&context, rsapss_h, digestlen);
-		isc_sha3_256_update(&context, rsapss_mgf_c1, 4);
-		isc_sha3_256_final(rsapss_dbmask + digestlen, &context);
-		break;
-	}
-
-	case DST_ALG_RSASHA3_384: {
-		isc_sha3_384_t context;
-
-		isc_sha3_384_init(&context);
-		isc_sha3_384_update(&context, rsapss_h, digestlen);
-		isc_sha3_384_update(&context, rsapss_mgf_c0, 4);
-		isc_sha3_384_final(rsapss_dbmask, &context);
-
-		isc_sha3_384_init(&context);
-		isc_sha3_384_update(&context, rsapss_h, digestlen);
-		isc_sha3_384_update(&context, rsapss_mgf_c1, 4);
-		isc_sha3_384_final(rsapss_dbmask + digestlen, &context);
-		break;
-	}
-
-	case DST_ALG_RSASHA3_512: {
-		isc_sha3_512_t context;
-
-		isc_sha3_512_init(&context);
-		isc_sha3_512_update(&context, rsapss_h, digestlen);
-		isc_sha3_512_update(&context, rsapss_mgf_c0, 4);
-		isc_sha3_512_final(rsapss_dbmask, &context);
-
-		isc_sha3_512_init(&context);
-		isc_sha3_512_update(&context, rsapss_h, digestlen);
-		isc_sha3_512_update(&context, rsapss_mgf_c1, 4);
-		isc_sha3_512_final(rsapss_dbmask + digestlen, &context);
-		break;
-	}
-
-	default:
-		INSIST(0);
-	}
+	emsa_pss_mgf(key_alg, rsapss_h, rsapss_dblen, digestlen,
+		     rsapss_dbmask);
 
 	/*
 	 * 8. Let DB = maskedDB \xor dbMask.
 	 */
-	for (i = 0; i < digestlen + 1; i++)
+	for (i = 0; i < rsapss_dblen; i++)
 		rsapss_db[i] = rsapss_maskeddb[i] ^ rsapss_dbmask[i];
 
 	/*
 	 * 9. Set the leftmost 8emLen - emBits bits of the leftmost
 	 * octet in DB to zero.
 	 */
-	rsapss_db[0] &= 0x01;
+	rsapss_db[0] &= bitmask;
 
 	/*
 	 * 10. If the emLen - hLen - sLen - 2 leftmost octets of DB are
@@ -1073,13 +1035,19 @@ emsa_pss_verify(unsigned int key_alg,
 	 * (the leftmost position is "position 1") does not have
 	 * hexadecimal value 0x01, output "inconsistent" and stop.
 	 */
-	if (rsapss_db[0] != 0x01)
-		return (ISC_FALSE);
+	rsapss_pslen = rsapss_emlen - digestlen - digestlen - 2;
+
+	for (i = 0; i < rsapss_pslen; i++)
+		if (rsapss_db[i] != 0)
+			return (DST_R_VERIFYFAILURE);
+
+	if (rsapss_db[rsapss_pslen] != 0x01)
+		return (DST_R_VERIFYFAILURE);
 
 	/*
 	 * 11. Let salt be the last sLen octets of DB.
 	 */
-	memmove(rsapss_salt, rsapss_db + 1, digestlen);
+	memmove(rsapss_salt, rsapss_db + rsapss_pslen + 1, digestlen);
 
 	/*
 	 * 12. Let
@@ -1156,9 +1124,9 @@ emsa_pss_verify(unsigned int key_alg,
 	 * "inconsistent".
 	 */
 	if (memcmp(rsapss_h, rsapss_hp, digestlen) != 0)
-		return (ISC_FALSE);
+		return (DST_R_VERIFYFAILURE);
 
-	return (ISC_TRUE);
+	return (ISC_R_SUCCESS);
 }
 
 static isc_result_t
@@ -1348,14 +1316,20 @@ opensslrsa_sign(dst_context_t *dctx, isc_buffer_t *sig) {
 	case DST_ALG_RSASHA3_256:
 	case DST_ALG_RSASHA3_384:
 	case DST_ALG_RSASHA3_512: {
-		unsigned char rsapss_em[2 * ISC_SHA512_DIGESTLENGTH + 2];
+		unsigned char rsapss_em[(4096/8) + ISC_SHA512_DIGESTLENGTH + 1];
+		unsigned int rsapss_emlen;
+		isc_result_t result;
 
-		emsa_pss_encode(dctx->key->key_alg, digest, digestlen,
-				rsapss_em);
+		result = emsa_pss_encode(dctx->key->key_alg,
+					 dctx->key->key_size - 1,
+					 digest, digestlen,
+					 rsapss_em, &rsapss_emlen);
+		if (result != ISC_R_SUCCESS)
+			return (result);
 
-		status = RSA_private_encrypt(2 * digestlen + 2,
+		status = RSA_private_encrypt(rsapss_emlen,
 					     rsapss_em, r.base, rsa,
-					     RSA_PKCS1_PADDING);
+					     RSA_NO_PADDING);
 		if (status < 0)
 			status = 0;
 		else
@@ -1373,14 +1347,20 @@ opensslrsa_sign(dst_context_t *dctx, isc_buffer_t *sig) {
 	case DST_ALG_RSASHA3_256:
 	case DST_ALG_RSASHA3_384:
 	case DST_ALG_RSASHA3_512: {
-		unsigned char rsapss_em[2 * ISC_SHA512_DIGESTLENGTH + 2];
+		unsigned char rsapss_em[(4096/8) + ISC_SHA512_DIGESTLENGTH + 1];
+		unsigned int rsapss_emlen;
+		isc_result_t result;
 
-		emsa_pss_encode(dctx->key->key_alg, digest, digestlen,
-				rsapss_em);
+		result = emsa_pss_encode(dctx->key->key_alg,
+					 dctx->key->key_size - 1,
+					 digest, digestlen,
+					 rsapss_em, &rsapss_emlen);
+		if (result != ISC_R_SUCCESS)
+			return (result);
 
-		status = RSA_private_encrypt(2 * digestlen + 2,
+		status = RSA_private_encrypt(rsapss_emlen,
 					     rsapss_em, r.base, rsa,
-					     RSA_PKCS1_PADDING);
+					     RSA_NO_PADDING);
 		if (status < 0)
 			status = 0;
 		else
@@ -1628,26 +1608,29 @@ opensslrsa_verify2(dst_context_t *dctx, int maxbits, const isc_region_t *sig) {
 		 * use with DNSSEC.
 		 */
 		unsigned char original[PREFIXLEN + 1024];
+		isc_result_t result;
 
 		if (RSA_size(rsa) > (int)sizeof(original))
 			return (DST_R_VERIFYFAILURE);
 
 		status = RSA_public_decrypt(sig->length, sig->base,
 					    original, rsa,
-					    RSA_PKCS1_PADDING);
+					    RSA_NO_PADDING);
 		if (status <= 0)
 			return (dst__openssl_toresult3(
 					dctx->category,
 					"RSA_public_decrypt",
 					DST_R_VERIFYFAILURE));
 
-		if (!emsa_pss_verify(dctx->key->key_alg,
-				     digest, digestlen,
-				     original, status))
-			return (DST_R_VERIFYFAILURE);
+		result = emsa_pss_verify(dctx->key->key_alg,
+					 dctx->key->key_size - 1,
+					 digest, digestlen,
+					 status, original);
+		if (result != ISC_R_SUCCESS)
+			return (result);
 
 		status = 1;
-	        break;
+		break;
 	}
 
 	default:
@@ -1665,30 +1648,33 @@ opensslrsa_verify2(dst_context_t *dctx, int maxbits, const isc_region_t *sig) {
 		 * use with DNSSEC.
 		 */
 		unsigned char original[PREFIXLEN + 1024];
+		isc_result_t result;
 
 		if (RSA_size(rsa) > (int)sizeof(original))
 			return (DST_R_VERIFYFAILURE);
 
 		status = RSA_public_decrypt(sig->length, sig->base,
 					    original, rsa,
-					    RSA_PKCS1_PADDING);
+					    RSA_NO_PADDING);
 		if (status <= 0)
 			return (dst__openssl_toresult3(
 					dctx->category,
 					"RSA_public_decrypt",
 					DST_R_VERIFYFAILURE));
 
-		if (!emsa_pss_verify(dctx->key->key_alg,
-				     digest, digestlen,
-				     original, status))
-			return (DST_R_VERIFYFAILURE);
+		result = emsa_pss_verify(dctx->key->key_alg,
+					 dctx->key->key_size - 1,
+					 digest, digestlen,
+					 status, original);
+		if (result != ISC_R_SUCCESS)
+			return (result);
 
 		status = 1;
-	        break;
+		break;
 	}
 
 	default:
-	        INSIST(type != 0);
+		INSIST(type != 0);
 		status = RSA_verify(type, digest, digestlen, sig->base,
 				    RSA_size(rsa), rsa);
 	}

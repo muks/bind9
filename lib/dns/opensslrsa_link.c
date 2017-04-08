@@ -832,8 +832,6 @@ emsa_pss_encode(unsigned int key_alg, unsigned int rsapss_embits,
 	if (result != ISC_R_SUCCESS)
 		return (result);
 
-	memset(rsapss_salt, 0, digestlen);
-
 	/*
 	 * 5. Let
 	 *

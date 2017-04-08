@@ -793,6 +793,7 @@ emsa_pss_encode(unsigned int key_alg, unsigned int rsapss_embits,
 		const unsigned char *digest, unsigned int digestlen,
 		unsigned char *rsapss_em, unsigned int *rsapss_emlen_out)
 {
+	isc_result_t result;
 	unsigned int rsapss_emlen;
 	unsigned char rsapss_salt[ISC_SHA512_DIGESTLENGTH];
 	unsigned char rsapss_mp[2 * ISC_SHA512_DIGESTLENGTH + 8];
@@ -825,9 +826,12 @@ emsa_pss_encode(unsigned int key_alg, unsigned int rsapss_embits,
 	/*
 	 * 4. Generate a random octet string salt of length sLen; if
 	 * sLen = 0, then salt is the empty string.
-	 *
-	 * XXXMUKS: generate a random salt of digestlen here
 	 */
+	result = dst__entropy_getdata(rsapss_salt, digestlen,
+				      ISC_FALSE);
+	if (result != ISC_R_SUCCESS)
+		return (result);
+
 	memset(rsapss_salt, 0, digestlen);
 
 	/*

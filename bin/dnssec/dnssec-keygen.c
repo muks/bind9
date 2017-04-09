@@ -84,6 +84,7 @@ usage(void) {
 	fprintf(stderr, "        RSASHA2-256 | RSASHA2-512 |\n");
 	fprintf(stderr, "        RSASHA3-256 | RSASHA3-384 | RSASHA3-512 |\n");
 	fprintf(stderr, "        ECDSAP256SHA256 | ECDSAP384SHA384 |\n");
+	fprintf(stderr, "        ECDSAP256SHA3-256 | ECDSAP384SHA3-384 |\n");
 	fprintf(stderr, "        DH | HMAC-MD5 | HMAC-SHA1 | HMAC-SHA224 | "
 				"HMAC-SHA256 | \n");
 	fprintf(stderr, "        HMAC-SHA384 | HMAC-SHA512\n");
@@ -108,6 +109,8 @@ usage(void) {
 	fprintf(stderr, "        ECCGOST:\tignored\n");
 	fprintf(stderr, "        ECDSAP256SHA256:\tignored\n");
 	fprintf(stderr, "        ECDSAP384SHA384:\tignored\n");
+	fprintf(stderr, "        ECDSAP256SHA3-256:\tignored\n");
+	fprintf(stderr, "        ECDSAP384SHA3-384:\tignored\n");
 	fprintf(stderr, "        HMAC-MD5:\t[1..512]\n");
 	fprintf(stderr, "        HMAC-SHA1:\t[1..160]\n");
 	fprintf(stderr, "        HMAC-SHA224:\t[1..224]\n");
@@ -612,7 +615,8 @@ main(int argc, char **argv) {
 		    alg != DST_ALG_RSASHA3_256 && alg != DST_ALG_RSASHA3_384 &&
 		    alg != DST_ALG_RSASHA3_512 &&
 		    alg != DST_ALG_ECCGOST &&
-		    alg != DST_ALG_ECDSA256 && alg != DST_ALG_ECDSA384) {
+		    alg != DST_ALG_ECDSA256 && alg != DST_ALG_ECDSA384 &&
+		    alg != DST_ALG_ECDSA_SHA3_256 && alg != DST_ALG_ECDSA_SHA3_384) {
 			fatal("%s is incompatible with NSEC3; "
 			      "do not use the -3 option", algname);
 		}
@@ -646,7 +650,9 @@ main(int argc, char **argv) {
 							" to %d\n", size);
 			} else if (alg != DST_ALG_ECCGOST &&
 				   alg != DST_ALG_ECDSA256 &&
-				   alg != DST_ALG_ECDSA384)
+				   alg != DST_ALG_ECDSA384 &&
+				   alg != DST_ALG_ECDSA_SHA3_256 &&
+				   alg != DST_ALG_ECDSA_SHA3_384)
 				fatal("key size not specified (-b option)");
 		}
 
@@ -786,9 +792,11 @@ main(int argc, char **argv) {
 		size = 256;
 		break;
 	case DST_ALG_ECDSA256:
+	case DST_ALG_ECDSA_SHA3_256:
 		size = 256;
 		break;
 	case DST_ALG_ECDSA384:
+	case DST_ALG_ECDSA_SHA3_384:
 		size = 384;
 		break;
 	case DST_ALG_HMACMD5:
@@ -929,6 +937,8 @@ main(int argc, char **argv) {
 	case DST_ALG_ECCGOST:
 	case DST_ALG_ECDSA256:
 	case DST_ALG_ECDSA384:
+	case DST_ALG_ECDSA_SHA3_256:
+	case DST_ALG_ECDSA_SHA3_384:
 		show_progress = ISC_TRUE;
 		/* fall through */
 

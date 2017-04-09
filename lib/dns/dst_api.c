@@ -236,6 +236,8 @@ dst_lib_init2(isc_mem_t *mctx, isc_entropy_t *ectx,
 #ifdef HAVE_OPENSSL_ECDSA
 	RETERR(dst__opensslecdsa_init(&dst_t_func[DST_ALG_ECDSA256]));
 	RETERR(dst__opensslecdsa_init(&dst_t_func[DST_ALG_ECDSA384]));
+	RETERR(dst__opensslecdsa_init(&dst_t_func[DST_ALG_ECDSA_SHA3_256]));
+	RETERR(dst__opensslecdsa_init(&dst_t_func[DST_ALG_ECDSA_SHA3_384]));
 #endif
 #elif PKCS11CRYPTO
 	RETERR(dst__pkcs11_init(mctx, engine));
@@ -261,6 +263,8 @@ dst_lib_init2(isc_mem_t *mctx, isc_entropy_t *ectx,
 #ifdef HAVE_PKCS11_ECDSA
 	RETERR(dst__pkcs11ecdsa_init(&dst_t_func[DST_ALG_ECDSA256]));
 	RETERR(dst__pkcs11ecdsa_init(&dst_t_func[DST_ALG_ECDSA384]));
+	RETERR(dst__pkcs11ecdsa_init(&dst_t_func[DST_ALG_ECDSA_SHA3_256]));
+	RETERR(dst__pkcs11ecdsa_init(&dst_t_func[DST_ALG_ECDSA_SHA3_384]));
 #endif
 #ifdef HAVE_PKCS11_GOST
 	RETERR(dst__pkcs11gost_init(&dst_t_func[DST_ALG_ECCGOST]));
@@ -1308,9 +1312,11 @@ dst_key_sigsize(const dst_key_t *key, unsigned int *n) {
 		*n = DNS_SIG_GOSTSIGSIZE;
 		break;
 	case DST_ALG_ECDSA256:
+	case DST_ALG_ECDSA_SHA3_256:
 		*n = DNS_SIG_ECDSA256SIZE;
 		break;
 	case DST_ALG_ECDSA384:
+	case DST_ALG_ECDSA_SHA3_384:
 		*n = DNS_SIG_ECDSA384SIZE;
 		break;
 #ifndef PK11_MD5_DISABLE
@@ -1660,6 +1666,8 @@ issymmetric(const dst_key_t *key) {
 	case DST_ALG_ECCGOST:
 	case DST_ALG_ECDSA256:
 	case DST_ALG_ECDSA384:
+	case DST_ALG_ECDSA_SHA3_256:
+	case DST_ALG_ECDSA_SHA3_384:
 		return (ISC_FALSE);
 #ifndef PK11_MD5_DISABLE
 	case DST_ALG_HMACMD5:
@@ -1951,7 +1959,8 @@ algorithm_status(unsigned int alg) {
 	    alg == DST_ALG_RSASHA3_256 || alg == DST_ALG_RSASHA3_384 ||
 	    alg == DST_ALG_RSASHA3_512 ||
 	    alg == DST_ALG_ECCGOST ||
-	    alg == DST_ALG_ECDSA256 || alg == DST_ALG_ECDSA384)
+	    alg == DST_ALG_ECDSA256 || alg == DST_ALG_ECDSA384 ||
+	    alg == DST_ALG_ECDSA_SHA3_256 || alg == DST_ALG_ECDSA_SHA3_384)
 		return (DST_R_NOCRYPTO);
 #endif
 	return (DST_R_UNSUPPORTEDALG);

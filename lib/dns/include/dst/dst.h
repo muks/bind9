@@ -50,11 +50,6 @@ typedef struct dst_context 	dst_context_t;
 #define DST_ALG_NSEC3RSASHA1	7
 #define DST_ALG_RSASHA256	8
 #define DST_ALG_RSASHA512	10
-#define DST_ALG_RSASHA2_256	247 /* XXXMUKS: update to real */
-#define DST_ALG_RSASHA2_512	248 /* XXXMUKS: update to real */
-#define DST_ALG_RSASHA3_256	249 /* XXXMUKS: update to real */
-#define DST_ALG_RSASHA3_384	250 /* XXXMUKS: update to real */
-#define DST_ALG_RSASHA3_512	251 /* XXXMUKS: update to real */
 #define DST_ALG_ECCGOST		12
 #define DST_ALG_ECDSA256	13
 #define DST_ALG_ECDSA384	14
@@ -65,6 +60,13 @@ typedef struct dst_context 	dst_context_t;
 #define DST_ALG_HMACSHA256	163	/* XXXMPA */
 #define DST_ALG_HMACSHA384	164	/* XXXMPA */
 #define DST_ALG_HMACSHA512	165	/* XXXMPA */
+#define DST_ALG_ECDSA_SHA3_256	245 /* XXXMUKS: update to real */
+#define DST_ALG_ECDSA_SHA3_384	246 /* XXXMUKS: update to real */
+#define DST_ALG_RSASHA2_256	247 /* XXXMUKS: update to real */
+#define DST_ALG_RSASHA2_512	248 /* XXXMUKS: update to real */
+#define DST_ALG_RSASHA3_256	249 /* XXXMUKS: update to real */
+#define DST_ALG_RSASHA3_384	250 /* XXXMUKS: update to real */
+#define DST_ALG_RSASHA3_512	251 /* XXXMUKS: update to real */
 #define DST_ALG_INDIRECT	252
 #define DST_ALG_PRIVATE		254
 #define DST_ALG_EXPAND		255

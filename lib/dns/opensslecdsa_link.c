@@ -14,6 +14,12 @@
 #error "ECDSA without EVP for SHA2?"
 #endif
 
+#if !defined(HAVE_EVP_SHA3_256) || !defined(HAVE_EVP_SHA3_384)
+#define USE_EVP_SHA3 0
+#else
+#define USE_EVP_SHA3 1
+#endif
+
 #include <isc/entropy.h>
 #include <isc/mem.h>
 #include <isc/sha2.h>
@@ -75,7 +81,9 @@ opensslecdsa_createctx(dst_key_t *key, dst_context_t *dctx) {
 
 	UNUSED(key);
 	REQUIRE(dctx->key->key_alg == DST_ALG_ECDSA256 ||
-		dctx->key->key_alg == DST_ALG_ECDSA384);
+		dctx->key->key_alg == DST_ALG_ECDSA384 ||
+		dctx->key->key_alg == DST_ALG_ECDSA_SHA3_256 ||
+		dctx->key->key_alg == DST_ALG_ECDSA_SHA3_384);
 
 	evp_md_ctx = EVP_MD_CTX_create();
 	if (evp_md_ctx == NULL)
@@ -102,7 +110,9 @@ opensslecdsa_destroyctx(dst_context_t *dctx) {
 	EVP_MD_CTX *evp_md_ctx = dctx->ctxdata.evp_md_ctx;
 
 	REQUIRE(dctx->key->key_alg == DST_ALG_ECDSA256 ||
-		dctx->key->key_alg == DST_ALG_ECDSA384);
+		dctx->key->key_alg == DST_ALG_ECDSA384 ||
+		dctx->key->key_alg == DST_ALG_ECDSA_SHA3_256 ||
+		dctx->key->key_alg == DST_ALG_ECDSA_SHA3_384);
 
 	if (evp_md_ctx != NULL) {
 		EVP_MD_CTX_destroy(evp_md_ctx);
@@ -115,7 +125,9 @@ opensslecdsa_adddata(dst_context_t *dctx, const isc_region_t *data) {
 	EVP_MD_CTX *evp_md_ctx = dctx->ctxdata.evp_md_ctx;
 
 	REQUIRE(dctx->key->key_alg == DST_ALG_ECDSA256 ||
-		dctx->key->key_alg == DST_ALG_ECDSA384);
+		dctx->key->key_alg == DST_ALG_ECDSA384 ||
+		dctx->key->key_alg == DST_ALG_ECDSA_SHA3_256 ||
+		dctx->key->key_alg == DST_ALG_ECDSA_SHA3_384);
 
 	if (!EVP_DigestUpdate(evp_md_ctx, data->base, data->length))
 		return (dst__openssl_toresult3(dctx->category,
@@ -149,7 +161,9 @@ opensslecdsa_sign(dst_context_t *dctx, isc_buffer_t *sig) {
 	const BIGNUM *r, *s;
 
 	REQUIRE(key->key_alg == DST_ALG_ECDSA256 ||
-		key->key_alg == DST_ALG_ECDSA384);
+		key->key_alg == DST_ALG_ECDSA384 ||
+		key->key_alg == DST_ALG_ECDSA_SHA3_256 ||
+		key->key_alg == DST_ALG_ECDSA_SHA3_384);
 
 	if (eckey == NULL)
 		return (ISC_R_FAILURE);
@@ -203,7 +217,9 @@ opensslecdsa_verify(dst_context_t *dctx, const isc_region_t *sig) {
 	BIGNUM *r = NULL, *s = NULL ;
 
 	REQUIRE(key->key_alg == DST_ALG_ECDSA256 ||
-		key->key_alg == DST_ALG_ECDSA384);
+		key->key_alg == DST_ALG_ECDSA384 ||
+		key->key_alg == DST_ALG_ECDSA_SHA3_256 ||
+		key->key_alg == DST_ALG_ECDSA_SHA3_384);
 
 	if (eckey == NULL)
 		return (ISC_R_FAILURE);
@@ -305,7 +321,9 @@ opensslecdsa_generate(dst_key_t *key, int unused, void (*callback)(int)) {
 	int group_nid;
 
 	REQUIRE(key->key_alg == DST_ALG_ECDSA256 ||
-		key->key_alg == DST_ALG_ECDSA384);
+		key->key_alg == DST_ALG_ECDSA384 ||
+		key->key_alg == DST_ALG_ECDSA_SHA3_256 ||
+		key->key_alg == DST_ALG_ECDSA_SHA3_384);
 	UNUSED(unused);
 	UNUSED(callback);
 
@@ -410,7 +428,9 @@ opensslecdsa_fromdns(dst_key_t *key, isc_buffer_t *data) {
 	unsigned char buf[DNS_KEY_ECDSA384SIZE + 1];
 
 	REQUIRE(key->key_alg == DST_ALG_ECDSA256 ||
-		key->key_alg == DST_ALG_ECDSA384);
+		key->key_alg == DST_ALG_ECDSA384 ||
+		key->key_alg == DST_ALG_ECDSA_SHA3_256 ||
+		key->key_alg == DST_ALG_ECDSA_SHA3_384);
 
 	if (key->key_alg == DST_ALG_ECDSA256) {
 		len = DNS_KEY_ECDSA256SIZE;
@@ -544,7 +564,9 @@ opensslecdsa_parse(dst_key_t *key, isc_lex_t *lexer, dst_key_t *pub) {
 	isc_mem_t *mctx = key->mctx;
 
 	REQUIRE(key->key_alg == DST_ALG_ECDSA256 ||
-		key->key_alg == DST_ALG_ECDSA384);
+		key->key_alg == DST_ALG_ECDSA384 ||
+		key->key_alg == DST_ALG_ECDSA_SHA3_256 ||
+		key->key_alg == DST_ALG_ECDSA_SHA3_384);
 
 	/* read private key file */
 	ret = dst__privstruct_parse(key, DST_ALG_ECDSA256, lexer, mctx, &priv);

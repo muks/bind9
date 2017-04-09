@@ -54,7 +54,8 @@ static const char *algs = "RSA | RSAMD5 | DH | DSA | RSASHA1 |"
 			  " RSASHA256 | RSASHA512 | ECCGOST |"
 			  " RSASHA2-256 | RSASHA2-512 |"
 			  " RSASHA3-256 | RSASHA3-384 | RSASHA3-512 |"
-			  " ECDSAP256SHA256 | ECDSAP384SHA384";
+			  " ECDSAP256SHA256 | ECDSAP384SHA384 |"
+			  " ECDSAP256SHA3-256 | ECDSAP384SHA3-384";
 
 ISC_PLATFORM_NORETURN_PRE static void
 usage(void) ISC_PLATFORM_NORETURN_POST;
@@ -442,7 +443,8 @@ main(int argc, char **argv) {
 		    alg != DST_ALG_RSASHA3_256 && alg != DST_ALG_RSASHA3_384 &&
 		    alg != DST_ALG_RSASHA3_512 &&
 		    alg != DST_ALG_ECCGOST &&
-		    alg != DST_ALG_ECDSA256 && alg != DST_ALG_ECDSA384) {
+		    alg != DST_ALG_ECDSA256 && alg != DST_ALG_ECDSA384 &&
+		    alg != DST_ALG_ECDSA_SHA3_256 && alg != DST_ALG_ECDSA_SHA3_384) {
 			fatal("%s is incompatible with NSEC3; "
 			      "do not use the -3 option", algname);
 		}

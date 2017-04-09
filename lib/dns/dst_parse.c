@@ -389,6 +389,8 @@ check_data(const dst_private_t *priv, const unsigned int alg,
 		return (check_gost(priv, external));
 	case DST_ALG_ECDSA256:
 	case DST_ALG_ECDSA384:
+	case DST_ALG_ECDSA_SHA3_256:
+	case DST_ALG_ECDSA_SHA3_384:
 		return (check_ecdsa(priv, external));
 #ifndef PK11_MD5_DISABLE
 	case DST_ALG_HMACMD5:
@@ -750,6 +752,12 @@ dst__privstruct_writefile(const dst_key_t *key, const dst_private_t *priv,
 		break;
 	case DST_ALG_ECDSA384:
 		fprintf(fp, "(ECDSAP384SHA384)\n");
+		break;
+	case DST_ALG_ECDSA_SHA3_256:
+		fprintf(fp, "(ECDSAP256SHA3-256)\n");
+		break;
+	case DST_ALG_ECDSA_SHA3_384:
+		fprintf(fp, "(ECDSAP384SHA3-384)\n");
 		break;
 	case DST_ALG_HMACMD5:
 		fprintf(fp, "(HMAC_MD5)\n");

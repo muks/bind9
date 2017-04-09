@@ -807,6 +807,12 @@ emsa_pss_encode(unsigned int key_alg, unsigned int rsapss_embits,
 	unsigned int bits, bitmask;
 
 	/*
+	 * RSA modulus sizes greater than 4096 bits is not supported.
+	 */
+	if ((rsapss_embits + 1) > 4096)
+		return (DST_R_SIGNFAILURE);
+
+	/*
 	 * This is an implementation of EMSA-PSS-ENCODE() from RFC 8017
 	 * section 9.1.1. The salt length is the same as digestlen.
 	 *
@@ -967,6 +973,12 @@ emsa_pss_verify(unsigned int key_alg, unsigned int rsapss_embits,
 	unsigned char rsapss_maskeddb[4096/8];
 	unsigned int i;
 	unsigned int bits, bitmask;
+
+	/*
+	 * RSA modulus sizes greater than 4096 bits is not supported.
+	 */
+	if ((rsapss_embits + 1) > 4096)
+		return (DST_R_VERIFYFAILURE);
 
 	/*
 	 * This is an implementation of EMSA-PSS-VERIFY() from RFC 8017

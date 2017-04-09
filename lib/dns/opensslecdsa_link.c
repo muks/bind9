@@ -23,6 +23,7 @@
 #include <isc/entropy.h>
 #include <isc/mem.h>
 #include <isc/sha2.h>
+#include <isc/sha3.h>
 #include <isc/string.h>
 #include <isc/util.h>
 
@@ -76,63 +77,190 @@ static isc_result_t opensslecdsa_todns(const dst_key_t *key,
 
 static isc_result_t
 opensslecdsa_createctx(dst_key_t *key, dst_context_t *dctx) {
-	EVP_MD_CTX *evp_md_ctx;
-	const EVP_MD *type = NULL;
-
 	UNUSED(key);
 	REQUIRE(dctx->key->key_alg == DST_ALG_ECDSA256 ||
 		dctx->key->key_alg == DST_ALG_ECDSA384 ||
 		dctx->key->key_alg == DST_ALG_ECDSA_SHA3_256 ||
 		dctx->key->key_alg == DST_ALG_ECDSA_SHA3_384);
 
-	evp_md_ctx = EVP_MD_CTX_create();
-	if (evp_md_ctx == NULL)
-		return (ISC_R_NOMEMORY);
-	if (dctx->key->key_alg == DST_ALG_ECDSA256)
-		type = EVP_sha256();
-	else
-		type = EVP_sha384();
+	switch (dctx->key->key_alg) {
+#if USE_EVP_SHA3
+	case DST_ALG_ECDSA_SHA3_256:
+	case DST_ALG_ECDSA_SHA3_384:
+#endif
+	case DST_ALG_ECDSA256:
+	case DST_ALG_ECDSA384: {
+		EVP_MD_CTX *evp_md_ctx;
+		const EVP_MD *type = NULL;
 
-	if (!EVP_DigestInit_ex(evp_md_ctx, type, NULL)) {
-		EVP_MD_CTX_destroy(evp_md_ctx);
-		return (dst__openssl_toresult3(dctx->category,
-					       "EVP_DigestInit_ex",
-					       ISC_R_FAILURE));
+		evp_md_ctx = EVP_MD_CTX_create();
+		if (evp_md_ctx == NULL)
+			return (ISC_R_NOMEMORY);
+
+		if (dctx->key->key_alg == DST_ALG_ECDSA256)
+			type = EVP_sha256();
+		else if (dctx->key->key_alg == DST_ALG_ECDSA384)
+			type = EVP_sha384();
+#if USE_EVP_SHA3
+		else if (dctx->key->key_alg == DST_ALG_ECDSA_SHA3_256)
+			type = EVP_sha3_256();
+		else
+			type = EVP_sha3_384();
+#endif
+		if (!EVP_DigestInit_ex(evp_md_ctx, type, NULL)) {
+			EVP_MD_CTX_destroy(evp_md_ctx);
+			return (dst__openssl_toresult3(dctx->category,
+						       "EVP_DigestInit_ex",
+						       ISC_R_FAILURE));
+		}
+
+		dctx->ctxdata.evp_md_ctx = evp_md_ctx;
+		break;
 	}
 
-	dctx->ctxdata.evp_md_ctx = evp_md_ctx;
+	default:
+		break;
+	}
 
+#if !USE_EVP_SHA3
+	switch (dctx->key->key_alg) {
+	case DST_ALG_ECDSA_SHA3_256: {
+		isc_sha3_256_t *sha3_256ctx;
+
+		sha3_256ctx = isc_mem_get(dctx->mctx,
+					  sizeof(isc_sha3_256_t));
+		if (sha3_256ctx == NULL)
+			return (ISC_R_NOMEMORY);
+		isc_sha3_256_init(sha3_256ctx);
+		dctx->ctxdata.sha3_256ctx = sha3_256ctx;
+		break;
+	}
+
+	case DST_ALG_ECDSA_SHA3_384: {
+		isc_sha3_384_t *sha3_384ctx;
+
+		sha3_384ctx = isc_mem_get(dctx->mctx,
+					  sizeof(isc_sha3_384_t));
+		if (sha3_384ctx == NULL)
+			return (ISC_R_NOMEMORY);
+		isc_sha3_384_init(sha3_384ctx);
+		dctx->ctxdata.sha3_384ctx = sha3_384ctx;
+		break;
+	}
+
+	default:
+		break;
+	}
+#endif
 	return (ISC_R_SUCCESS);
 }
 
 static void
 opensslecdsa_destroyctx(dst_context_t *dctx) {
-	EVP_MD_CTX *evp_md_ctx = dctx->ctxdata.evp_md_ctx;
-
 	REQUIRE(dctx->key->key_alg == DST_ALG_ECDSA256 ||
 		dctx->key->key_alg == DST_ALG_ECDSA384 ||
 		dctx->key->key_alg == DST_ALG_ECDSA_SHA3_256 ||
 		dctx->key->key_alg == DST_ALG_ECDSA_SHA3_384);
 
-	if (evp_md_ctx != NULL) {
-		EVP_MD_CTX_destroy(evp_md_ctx);
-		dctx->ctxdata.evp_md_ctx = NULL;
+	switch (dctx->key->key_alg) {
+#if USE_EVP_SHA3
+	case DST_ALG_ECDSA_SHA3_256:
+	case DST_ALG_ECDSA_SHA3_384:
+#endif
+	case DST_ALG_ECDSA256:
+	case DST_ALG_ECDSA384: {
+		EVP_MD_CTX *evp_md_ctx = dctx->ctxdata.evp_md_ctx;
+
+		if (evp_md_ctx != NULL) {
+			EVP_MD_CTX_destroy(evp_md_ctx);
+			dctx->ctxdata.evp_md_ctx = NULL;
+		}
+		break;
 	}
+
+	default:
+		break;
+	}
+
+#if !USE_EVP_SHA3
+	switch (dctx->key->key_alg) {
+	case DST_ALG_ECDSA_SHA3_256: {
+		isc_sha3_256_t *sha3_256ctx = dctx->ctxdata.sha3_256ctx;
+
+		if (sha3_256ctx != NULL) {
+			isc_sha3_256_invalidate(sha3_256ctx);
+			isc_mem_put(dctx->mctx, sha3_256ctx,
+				    sizeof(isc_sha3_256_t));
+			dctx->ctxdata.sha3_256ctx = NULL;
+		}
+		break;
+	}
+
+	case DST_ALG_ECDSA_SHA3_384: {
+		isc_sha3_384_t *sha3_384ctx = dctx->ctxdata.sha3_384ctx;
+
+		if (sha3_384ctx != NULL) {
+			isc_sha3_384_invalidate(sha3_384ctx);
+			isc_mem_put(dctx->mctx, sha3_384ctx,
+				    sizeof(isc_sha3_384_t));
+			dctx->ctxdata.sha3_384ctx = NULL;
+		}
+		break;
+	}
+
+	default:
+		break;
+	}
+#endif
 }
 
 static isc_result_t
 opensslecdsa_adddata(dst_context_t *dctx, const isc_region_t *data) {
-	EVP_MD_CTX *evp_md_ctx = dctx->ctxdata.evp_md_ctx;
-
 	REQUIRE(dctx->key->key_alg == DST_ALG_ECDSA256 ||
 		dctx->key->key_alg == DST_ALG_ECDSA384 ||
 		dctx->key->key_alg == DST_ALG_ECDSA_SHA3_256 ||
 		dctx->key->key_alg == DST_ALG_ECDSA_SHA3_384);
 
-	if (!EVP_DigestUpdate(evp_md_ctx, data->base, data->length))
-		return (dst__openssl_toresult3(dctx->category,
-					       "EVP_DigestUpdate",
-					       ISC_R_FAILURE));
+	switch (dctx->key->key_alg) {
+#if USE_EVP_SHA3
+	case DST_ALG_ECDSA_SHA3_256:
+	case DST_ALG_ECDSA_SHA3_384:
+#endif
+	case DST_ALG_ECDSA256:
+	case DST_ALG_ECDSA384: {
+		EVP_MD_CTX *evp_md_ctx = dctx->ctxdata.evp_md_ctx;
+
+		if (!EVP_DigestUpdate(evp_md_ctx, data->base, data->length))
+			return (dst__openssl_toresult3(dctx->category,
+						       "EVP_DigestUpdate",
+						       ISC_R_FAILURE));
+		break;
+	}
+
+	default:
+		break;
+	}
+
+#if !USE_EVP_SHA3
+	switch (dctx->key->key_alg) {
+	case DST_ALG_ECDSA_SHA3_256: {
+		isc_sha3_256_t *sha3_256ctx = dctx->ctxdata.sha3_256ctx;
+
+		isc_sha3_256_update(sha3_256ctx, data->base, data->length);
+		break;
+	}
+
+	case DST_ALG_ECDSA_SHA3_384: {
+		isc_sha3_384_t *sha3_384ctx = dctx->ctxdata.sha3_384ctx;
+
+		isc_sha3_384_update(sha3_384ctx, data->base, data->length);
+		break;
+	}
+
+	default:
+		break;
+	}
+#endif
 
 	return (ISC_R_SUCCESS);
 }
@@ -153,7 +281,6 @@ opensslecdsa_sign(dst_context_t *dctx, isc_buffer_t *sig) {
 	dst_key_t *key = dctx->key;
 	isc_region_t region;
 	ECDSA_SIG *ecdsasig;
-	EVP_MD_CTX *evp_md_ctx = dctx->ctxdata.evp_md_ctx;
 	EVP_PKEY *pkey = key->keydata.pkey;
 	EC_KEY *eckey = EVP_PKEY_get1_EC_KEY(pkey);
 	unsigned int dgstlen, siglen;
@@ -168,19 +295,65 @@ opensslecdsa_sign(dst_context_t *dctx, isc_buffer_t *sig) {
 	if (eckey == NULL)
 		return (ISC_R_FAILURE);
 
-	if (key->key_alg == DST_ALG_ECDSA256)
+	switch (key->key_alg) {
+	case DST_ALG_ECDSA256:
+	case DST_ALG_ECDSA_SHA3_256:
 		siglen = DNS_SIG_ECDSA256SIZE;
-	else
+		break;
+	case DST_ALG_ECDSA384:
+	case DST_ALG_ECDSA_SHA3_384:
 		siglen = DNS_SIG_ECDSA384SIZE;
+		break;
+	default:
+		INSIST(0);
+	}
 
 	isc_buffer_availableregion(sig, &region);
 	if (region.length < siglen)
 		DST_RET(ISC_R_NOSPACE);
 
-	if (!EVP_DigestFinal(evp_md_ctx, digest, &dgstlen))
-		DST_RET(dst__openssl_toresult3(dctx->category,
-					       "EVP_DigestFinal",
-					       ISC_R_FAILURE));
+	switch (dctx->key->key_alg) {
+#if USE_EVP_SHA3
+	case DST_ALG_ECDSA_SHA3_256:
+	case DST_ALG_ECDSA_SHA3_384:
+#endif
+	case DST_ALG_ECDSA256:
+	case DST_ALG_ECDSA384: {
+		EVP_MD_CTX *evp_md_ctx = dctx->ctxdata.evp_md_ctx;
+
+		if (!EVP_DigestFinal(evp_md_ctx, digest, &dgstlen))
+			DST_RET(dst__openssl_toresult3(dctx->category,
+						       "EVP_DigestFinal",
+						       ISC_R_FAILURE));
+		break;
+	}
+
+	default:
+		break;
+	}
+
+#if !USE_EVP_SHA3
+	switch (dctx->key->key_alg) {
+	case DST_ALG_ECDSA_SHA3_256: {
+		isc_sha3_256_t *sha3_256ctx = dctx->ctxdata.sha3_256ctx;
+
+		isc_sha3_256_final(digest, sha3_256ctx);
+		dgstlen = ISC_SHA3_256_DIGESTLENGTH;
+		break;
+	}
+
+	case DST_ALG_ECDSA_SHA3_384: {
+		isc_sha3_384_t *sha3_384ctx = dctx->ctxdata.sha3_384ctx;
+
+		isc_sha3_384_final(digest, sha3_384ctx);
+		dgstlen = ISC_SHA3_384_DIGESTLENGTH;
+		break;
+	}
+
+	default:
+		break;
+	}
+#endif
 
 	ecdsasig = ECDSA_do_sign(digest, dgstlen, eckey);
 	if (ecdsasig == NULL)
@@ -209,7 +382,6 @@ opensslecdsa_verify(dst_context_t *dctx, const isc_region_t *sig) {
 	int status;
 	unsigned char *cp = sig->base;
 	ECDSA_SIG *ecdsasig = NULL;
-	EVP_MD_CTX *evp_md_ctx = dctx->ctxdata.evp_md_ctx;
 	EVP_PKEY *pkey = key->keydata.pkey;
 	EC_KEY *eckey = EVP_PKEY_get1_EC_KEY(pkey);
 	unsigned int dgstlen, siglen;
@@ -224,18 +396,64 @@ opensslecdsa_verify(dst_context_t *dctx, const isc_region_t *sig) {
 	if (eckey == NULL)
 		return (ISC_R_FAILURE);
 
-	if (key->key_alg == DST_ALG_ECDSA256)
+	switch (key->key_alg) {
+	case DST_ALG_ECDSA256:
+	case DST_ALG_ECDSA_SHA3_256:
 		siglen = DNS_SIG_ECDSA256SIZE;
-	else
+		break;
+	case DST_ALG_ECDSA384:
+	case DST_ALG_ECDSA_SHA3_384:
 		siglen = DNS_SIG_ECDSA384SIZE;
+		break;
+	default:
+		INSIST(0);
+	}
 
 	if (sig->length != siglen)
 		return (DST_R_VERIFYFAILURE);
 
-	if (!EVP_DigestFinal_ex(evp_md_ctx, digest, &dgstlen))
-		DST_RET (dst__openssl_toresult3(dctx->category,
-						"EVP_DigestFinal_ex",
-						ISC_R_FAILURE));
+	switch (dctx->key->key_alg) {
+#if USE_EVP_SHA3
+	case DST_ALG_ECDSA_SHA3_256:
+	case DST_ALG_ECDSA_SHA3_384:
+#endif
+	case DST_ALG_ECDSA256:
+	case DST_ALG_ECDSA384: {
+		EVP_MD_CTX *evp_md_ctx = dctx->ctxdata.evp_md_ctx;
+
+		if (!EVP_DigestFinal(evp_md_ctx, digest, &dgstlen))
+			DST_RET(dst__openssl_toresult3(dctx->category,
+						       "EVP_DigestFinal",
+						       ISC_R_FAILURE));
+		break;
+	}
+
+	default:
+		break;
+	}
+
+#if !USE_EVP_SHA3
+	switch (dctx->key->key_alg) {
+	case DST_ALG_ECDSA_SHA3_256: {
+		isc_sha3_256_t *sha3_256ctx = dctx->ctxdata.sha3_256ctx;
+
+		isc_sha3_256_final(digest, sha3_256ctx);
+		dgstlen = ISC_SHA3_256_DIGESTLENGTH;
+		break;
+	}
+
+	case DST_ALG_ECDSA_SHA3_384: {
+		isc_sha3_384_t *sha3_384ctx = dctx->ctxdata.sha3_384ctx;
+
+		isc_sha3_384_final(digest, sha3_384ctx);
+		dgstlen = ISC_SHA3_384_DIGESTLENGTH;
+		break;
+	}
+
+	default:
+		break;
+	}
+#endif
 
 	ecdsasig = ECDSA_SIG_new();
 	if (ecdsasig == NULL)
@@ -327,12 +545,19 @@ opensslecdsa_generate(dst_key_t *key, int unused, void (*callback)(int)) {
 	UNUSED(unused);
 	UNUSED(callback);
 
-	if (key->key_alg == DST_ALG_ECDSA256) {
+	switch (key->key_alg) {
+	case DST_ALG_ECDSA256:
+	case DST_ALG_ECDSA_SHA3_256:
 		group_nid = NID_X9_62_prime256v1;
 		key->key_size = DNS_KEY_ECDSA256SIZE * 4;
-	} else {
+		break;
+	case DST_ALG_ECDSA384:
+	case DST_ALG_ECDSA_SHA3_384:
 		group_nid = NID_secp384r1;
 		key->key_size = DNS_KEY_ECDSA384SIZE * 4;
+		break;
+	default:
+		INSIST(0);
 	}
 
 	eckey = EC_KEY_new_by_curve_name(group_nid);
@@ -432,12 +657,19 @@ opensslecdsa_fromdns(dst_key_t *key, isc_buffer_t *data) {
 		key->key_alg == DST_ALG_ECDSA_SHA3_256 ||
 		key->key_alg == DST_ALG_ECDSA_SHA3_384);
 
-	if (key->key_alg == DST_ALG_ECDSA256) {
+	switch (key->key_alg) {
+	case DST_ALG_ECDSA256:
+	case DST_ALG_ECDSA_SHA3_256:
 		len = DNS_KEY_ECDSA256SIZE;
 		group_nid = NID_X9_62_prime256v1;
-	} else {
+		break;
+	case DST_ALG_ECDSA384:
+	case DST_ALG_ECDSA_SHA3_384:
 		len = DNS_KEY_ECDSA384SIZE;
 		group_nid = NID_secp384r1;
+		break;
+	default:
+		INSIST(0);
 	}
 
 	isc_buffer_remainingregion(data, &r);
@@ -585,10 +817,18 @@ opensslecdsa_parse(dst_key_t *key, isc_lex_t *lexer, dst_key_t *pub) {
 		return (ISC_R_SUCCESS);
 	}
 
-	if (key->key_alg == DST_ALG_ECDSA256)
+	switch (key->key_alg) {
+	case DST_ALG_ECDSA256:
+	case DST_ALG_ECDSA_SHA3_256:
 		group_nid = NID_X9_62_prime256v1;
-	else
+		break;
+	case DST_ALG_ECDSA384:
+	case DST_ALG_ECDSA_SHA3_384:
 		group_nid = NID_secp384r1;
+		break;
+	default:
+		INSIST(0);
+	}
 
 	eckey = EC_KEY_new_by_curve_name(group_nid);
 	if (eckey == NULL)
@@ -610,11 +850,22 @@ opensslecdsa_parse(dst_key_t *key, isc_lex_t *lexer, dst_key_t *pub) {
 		EVP_PKEY_free(pkey);
 		DST_RET (dst__openssl_toresult(DST_R_OPENSSLFAILURE));
 	}
+
 	key->keydata.pkey = pkey;
-	if (key->key_alg == DST_ALG_ECDSA256)
+
+	switch (key->key_alg) {
+	case DST_ALG_ECDSA256:
+	case DST_ALG_ECDSA_SHA3_256:
 		key->key_size = DNS_KEY_ECDSA256SIZE * 4;
-	else
+		break;
+	case DST_ALG_ECDSA384:
+	case DST_ALG_ECDSA_SHA3_384:
 		key->key_size = DNS_KEY_ECDSA384SIZE * 4;
+		break;
+	default:
+		INSIST(0);
+	}
+
 	ret = ISC_R_SUCCESS;
 
  err:
